@@ -512,8 +512,7 @@ public class PigServer {
      */
     public void registerCode(String path, String scriptingLang, String namespace)
     throws IOException {
-        File f = new File(path);
-
+        File f = FileLocalizer.fetchFile(pigContext.getProperties(), path).file;
         if (!f.canRead()) {
             int errCode = 4002;
             String msg = "Can't read file: " + path;
@@ -522,9 +521,9 @@ public class PigServer {
         }
         if(scriptingLang != null) {
             ScriptEngine se = ScriptEngine.getInstance(scriptingLang);    
-            se.registerFunctions(path, namespace, pigContext);
+            se.registerFunctions(f.getPath(), namespace, pigContext);
         }
-        pigContext.addScriptFile(path);
+        pigContext.addScriptFile(f.getPath());
     }
 
     /**
@@ -1233,7 +1232,7 @@ public class PigServer {
         if( jobPriority != null ) {
             pigContext.getProperties().setProperty( PigContext.JOB_PRIORITY, jobPriority );
         }
-
+       
         // In this plan, all stores in the plan will be executed. They should be ignored if the plan is reused.
         currDAG.countExecutedStores();
        
@@ -1242,9 +1241,7 @@ public class PigServer {
         if( currDAG.lp.size() == 0 ) {
            return PigStats.get(); 
         }
-
-        pigContext.getProperties().setProperty("pig.logical.plan.signature", currDAG.lp.getSignature());
-
+        
         PigStats stats = executeCompiledLogicalPlan();
         
         return stats;

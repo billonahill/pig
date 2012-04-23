@@ -35,15 +35,6 @@ class SyncProgressNotificationAdaptor implements PigProgressNotificationListener
     }
 
     @Override
-    public void initialPlanNotification(MROperPlan plan) {
-        synchronized (listeners) {
-            for (PigProgressNotificationListener listener : listeners) {
-                listener.initialPlanNotification(plan);
-            }
-        }
-    }
-
-    @Override
     public void jobFailedNotification(String scriptId, JobStats jobStats) {
         synchronized (listeners) {
             for (PigProgressNotificationListener listener : listeners) {

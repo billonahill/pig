@@ -9,5 +9,3 @@ pig-withouthadoop.jar
 *.iml
 *.ipr
 *.iws
-contrib/iris/sketches/chord/jobs.json
-contrib/iris/sketches/chord/pig-events.json

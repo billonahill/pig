@@ -24,11 +24,11 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2619: HBaseStorage constructs a Scan with cacheBlocks = false
+
 PIG-2604: Pig should print its build info at runtime (traviscrawford via dvryaboy)
 
 PIG-2573: Automagically setting parallelism based on input file size does not work with HCatalog (traviscrawford via julien)
-
-PIG-2541: Automatic record provenance (source tagging) for PigStorage (prkommireddi via daijy)
 
 PIG-2538: Add helper wrapper classes for StoreFunc (billgraham via dvryaboy)
 
@@ -106,6 +106,14 @@ OPTIMIZATIONS
 
 BUG FIXES
 
+PIG-2644: Piggybank's HadoopJobHistoryLoader throws NPE when reading broken history file (herberts via daijy)
+
+PIG-2627: Custom partitioner not set when POSplit is involved in Plan (aniket486 via daijy)
+
+PIG-2596: Jython UDF does not handle boolean output (aniket486 via daijy)
+
+PIG-2649: org.apache.pig.parser.ParserValidationException does not expose the cause exception
+
 PIG-2540: [piggybank] AvroStorage can't read schema on amazon s3 in elastic mapreduce (rjurney via jcoveney)
 
 PIG-2618: e2e local fails to build
@@ -156,6 +164,10 @@ Release 0.10.0 - Unreleased
 INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
+
+PIG-2601: Additional document for 0.10 (daijy)
+
+PIG-2317: Ruby/Jruby UDFs (jcoveney via daijy)
 
 PIG-1270: Push limit into loader (daijy)
 
@@ -290,6 +302,10 @@ PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
+
+PIG-2578: Multiple Store-commands mess up mapred.output.dir. (daijy)
+
+PIG-2623: Support S3 paths for registering UDFs (nshkrob via daijy)
 
 PIG-2505: AvroStorage won't read any file not ending in .avro (russell.jurney via daijy)
 
@@ -460,6 +476,10 @@ inclusion of test classes (cos via gates)
 Release 0.9.3 - Unreleased
 
 BUG FIXES
+
+PIG-2642: StoreMetadata.storeSchema can't access files in the output directory (Hadoop 0.23) (thw via daijy)
+
+PIG-2621: Documentation inaccurate regarding Pig Properties in trunk (prkommireddi via daijy)
 
 PIG-2550: Custom tuple results in "Unexpected datatype 110 while reading tuplefrom binary file" while spilling (daijy)
 

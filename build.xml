@@ -31,7 +31,7 @@
     <property name="pigsmoke.pom" value="${basedir}/ivy/pigsmoke.pom" />
     <property name="pigunit.pom" value="${basedir}/ivy/pigunit.pom" />
     <property name="pig.version" value="0.11.0" />
-    <property name="version" value="${pig.version}-iris-SNAPSHOT" />
+    <property name="version" value="${pig.version}-SNAPSHOT" />
     <property name="final.name" value="${name}-${version}" />
 
     <!-- source properties -->
@@ -648,6 +648,7 @@
                 </section>
             </manifest>
             <fileset file="${basedir}/conf/pig-default.properties" />
+            <fileset file="${basedir}/src/main/jruby/pigudf.rb" />
             <exclude name="hadoop-site.xml" />
         </jar>
         <!-- @depricated -->
@@ -683,6 +684,7 @@
                 <include name="zookeeper*.jar" />
             </zipgroupfileset>
             <fileset file="${basedir}/conf/pig-default.properties" />
+            <fileset file="${basedir}/src/main/jruby/pigudf.rb" />
             <exclude name="hadoop-site.xml" />
         </jar>
         <antcall target="include-meta" inheritRefs="true" inheritall="true"/>
@@ -741,6 +743,7 @@
                 </section>
             </manifest>
             <fileset file="${basedir}/conf/pig-default.properties" />
+            <fileset file="${basedir}/src/main/jruby/pigudf.rb" />
             <exclude name="hadoop-site.xml" />
         </jar>
         <!-- @deprecated -->
@@ -765,6 +768,7 @@
                 <include name="automaton-${automaton.version}.jar" />
             </zipgroupfileset>
             <fileset file="${basedir}/conf/pig-default.properties" />
+            <fileset file="${basedir}/src/main/jruby/pigudf.rb" />
             <exclude name="hadoop-site.xml" />
         </jar>
         <copy file="${output.jarfile.withouthadoop}" tofile="${output.jarfile.backcompat.withouthadoop}"/>
@@ -1115,7 +1119,7 @@
         <delete dir="${package.buildroot}" quiet="true" verbose="false"/>
     </target>
    
-    <target name="deb" depends="tar-release" description="Make deb package">
+    <target name="deb" depends="package-release" description="Make deb package">
         <taskdef name="deb"
             classname="org.vafer.jdeb.ant.DebAntTask">
             <classpath refid="classpath" />
@@ -1126,7 +1130,7 @@
                 <exclude name="control" />
             </fileset>
         </copy>
-        <copy file="${build.dir}/${final.name}-withouthadoop.jar" tofile="${build.dir}/${final.name}/share/pig/${final.name}-core.jar" overwrite="true" />
+        <copy file="${build.dir}/${final.name}-withouthadoop.jar" tofile="${rpm.dist.dir}/share/pig/${final.name}-core.jar" overwrite="true" />
         <copy file="${src.dir}/packages/deb/pig.control/control" todir="${package.build.dir}/pig.control">
             <filterchain>
                 <replacetokens>
@@ -1141,18 +1145,18 @@
             </filterchain>
         </copy>
         <deb destfile="${package.buildroot}/${name}_${pig.version}-${package.release}_${os.arch}.deb" control="${package.build.dir}/pig.control">
-            <tarfileset dir="${build.dir}/${final.name}" filemode="644" prefix="/usr">
+            <tarfileset dir="${rpm.dist.dir}" filemode="644" prefix="/usr">
                 <exclude name="bin/*" />
                 <exclude name="conf" />
                 <exclude name="conf/*" />
                 <exclude name="etc/**" />
                 <include name="**" />
             </tarfileset>
-            <tarfileset dir="${build.dir}/${final.name}" filemode="755" prefix="/usr">
+            <tarfileset dir="${rpm.dist.dir}" filemode="755" prefix="/usr">
                 <include name="bin/*" />
                 <include name="sbin/*" />
             </tarfileset>
-            <tarfileset dir="${build.dir}/${final.name}/etc/pig" filemode="644" prefix="/etc/pig">
+            <tarfileset dir="${rpm.dist.dir}/etc/pig" filemode="644" prefix="/etc/pig">
                 <include name="**" />
             </tarfileset>
         </deb>
@@ -1323,7 +1327,7 @@
     <target name="releaseaudit" depends="ivy-releaseaudit, package" description="Release Audit activities">
 	<java classname="${rat.reporting.classname}" fork="true">
             <classpath refid="releaseaudit.classpath"/>
-            <arg value="${build.dir}/${final.name}"/>
+            <arg value="${build.dir}/tar/${final.name}"/>
         </java>
     </target>
 
