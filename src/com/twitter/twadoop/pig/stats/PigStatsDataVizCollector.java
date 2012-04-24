@@ -278,7 +278,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
 
   private void pushJobStatusEvent(String jobId)  {
     // then for each running job, we report the job progress
-    JobClient jobClient = ((SimplePigStats)PigStats.get()).getJobClient();
+    JobClient jobClient = PigStatsUtil.getJobClient();
       try {
         RunningJob rj = jobClient.getJob(jobId);
         if (rj == null) { return; }

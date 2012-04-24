@@ -65,7 +65,6 @@ import org.apache.pig.impl.plan.CompilationMessageCollector.MessageType;
 import org.apache.pig.impl.util.ConfigurationValidator;
 import org.apache.pig.impl.util.LogUtils;
 import org.apache.pig.impl.util.UDFContext;
-import org.apache.pig.impl.util.Utils;
 import org.apache.pig.tools.pigstats.PigStats;
 import org.apache.pig.tools.pigstats.PigStatsUtil;
 import org.apache.pig.tools.pigstats.ScriptState;
@@ -285,7 +284,9 @@ public class MapReduceLauncher extends Launcher{
             				log.info("More information at: http://"+ jobTrackerLoc+
             						"/jobdetails.jsp?jobid="+job.getAssignedJobID());
             			}  
-            			
+
+                        // update statistics for this job so jobId is set
+                        PigStatsUtil.addJobStats(job);
             			ScriptState.get().emitJobStartedNotification(
                                 job.getAssignedJobID().toString());                        
             		}

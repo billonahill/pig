@@ -57,7 +57,7 @@ import org.apache.pig.tools.pigstats.JobStats.JobState;
  * It includes status of the execution, the DAG of its MR jobs, as well as 
  * information about outputs and inputs of the script. 
  */
-public final class SimplePigStats extends PigStats {
+final class SimplePigStats extends PigStats {
     
     private static final Log LOG = LogFactory.getLog(SimplePigStats.class);
     
@@ -401,7 +401,7 @@ public final class SimplePigStats extends PigStats {
         return startTime > 0;
     }
     
-    public JobClient getJobClient() {
+    JobClient getJobClient() {
         return jobClient;
     }
     
@@ -410,7 +410,7 @@ public final class SimplePigStats extends PigStats {
     }
         
     @SuppressWarnings("deprecation")
-    public JobStats addJobStats(Job job) {
+    JobStats addJobStats(Job job) {
         MapReduceOper mro = jobMroMap.get(job);
          
         if (mro == null) {

@@ -188,7 +188,23 @@ public abstract class PigStatsUtil {
                 ps.getNumberSuccessfulJobs());
         if (display) ps.display();
     }
-    
+
+    /**
+     * Add stats for a new Job, which doesn't yet need to be completed.
+     *
+     * @param job the job being run
+     * @return JobStats for the job
+     */
+    public static JobStats addJobStats(Job job) {
+        SimplePigStats ps = (SimplePigStats)PigStats.get();
+        return ps.addJobStats(job);
+    }
+
+    public static JobClient getJobClient() {
+        SimplePigStats ps = (SimplePigStats)PigStats.get();
+        return ps.getJobClient();
+    }
+
     /**
      * Returns an empty PigStats object
      * 

@@ -31,7 +31,12 @@ import org.apache.pig.PigRunner;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface PigProgressNotificationListener extends java.util.EventListener {
-    
+
+    /**
+     * Invoked before any MR jobs are run with the plan that is to be executed.
+     *
+     * @param plan the MROperPlan that is to be executed
+     */
     public void initialPlanNotification(MROperPlan plan);
 
     /**

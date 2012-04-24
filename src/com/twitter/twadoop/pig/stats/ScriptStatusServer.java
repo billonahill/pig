@@ -1,4 +1,4 @@
-package org.apache.pig.tools.pigstats;
+package com.twitter.twadoop.pig.stats;
 
 import com.twitter.twadoop.pig.stats.PigStatsDataVizCollector;
 import org.apache.commons.logging.Log;
