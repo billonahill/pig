@@ -264,7 +264,13 @@ public class MapReduceLauncher extends Launcher{
             jcThread.setUncaughtExceptionHandler(jctExceptionHandler);
             
             jcThread.setContextClassLoader(PigContext.getClassLoader());
-            
+
+            // mark the times that the jobs were submitted so it's reflected in job history props
+            for (Job job : jc.getWaitingJobs()) {
+                job.getJobConf().set("pig.job.submitted.timestamp",
+                                Long.toString(System.currentTimeMillis()));
+            }
+
             //All the setup done, now lets launch the jobs.
             jcThread.start();
             
@@ -285,7 +291,7 @@ public class MapReduceLauncher extends Launcher{
             				log.info("More information at: http://"+ jobTrackerLoc+
             						"/jobdetails.jsp?jobid="+job.getAssignedJobID());
             			}  
-            			
+
             			ScriptState.get().emitJobStartedNotification(
                                 job.getAssignedJobID().toString());                        
             		}
