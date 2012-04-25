@@ -221,7 +221,13 @@ public class ScriptState {
         
     public void emitInitialPlanNotification(MROperPlan plan) {
         for (PigProgressNotificationListener listener: listeners) {
-            listener.initialPlanNotification(id, plan);
+            try {
+                listener.initialPlanNotification(id, plan);
+            } catch (NoSuchMethodError e) {
+                LOG.warn("PigProgressNotificationListener implementation doesn't "
+                       + "implement initialPlanNotification(..) method: "
+                       + listener.getClass().getName(), e);
+            }
         }
     }
 
