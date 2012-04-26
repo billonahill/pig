@@ -1,4 +1,4 @@
-package com.twitter.twadoop.pig.stats;
+package com.twitter.ambrose.pig.stats;
 
 import org.apache.pig.tools.pigstats.OutputStats;
 import org.apache.pig.tools.pigstats.JobStats;

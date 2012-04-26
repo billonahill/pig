@@ -1,4 +1,4 @@
-package com.twitter.twadoop.pig.stats;
+package com.twitter.ambrose.pig.stats;
 
 import org.apache.hadoop.mapred.Counters;
 import org.apache.hadoop.mapreduce.Counter;
@@ -7,9 +7,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**

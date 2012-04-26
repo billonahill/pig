@@ -11,6 +11,6 @@ export PIG_CLASSPATH=$(ls "$PIG_HOME"/pig-*.jar) \
 export IRIS_HOME="${IRIS_HOME:-$PIG_HOME/contrib/iris}"
 
 # configure the iris pig notification listener
-PIG_OPTS="-Dpig.notification.listener=com.twitter.twadoop.pig.stats.PigStatsDataVizCollector $PIG_OPTS"
+PIG_OPTS="-Dpig.notification.listener=com.twitter.ambrose.pig.stats.PigStatsDataVizCollector $PIG_OPTS"
 
 exec "$PIG_HOME/bin/pig" $PIG_OPTS $@

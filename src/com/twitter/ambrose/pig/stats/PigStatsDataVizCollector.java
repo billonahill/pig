@@ -1,4 +1,4 @@
-package com.twitter.twadoop.pig.stats;
+package com.twitter.ambrose.pig.stats;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
