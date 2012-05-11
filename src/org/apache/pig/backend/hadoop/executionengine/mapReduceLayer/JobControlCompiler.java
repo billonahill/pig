@@ -58,6 +58,7 @@ import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.partitioners
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.partitioners.WeightedRangePartitioner;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.ConstantExpression;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.POUserFunc;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
@@ -92,7 +93,6 @@ import org.apache.pig.impl.util.JarManager;
 import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.UDFContext;
-import org.apache.pig.impl.util.UriUtil;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.tools.pigstats.ScriptState;
 
@@ -131,6 +131,9 @@ public class JobControlCompiler{
     public static final String LOG_DIR = "_logs";
 
     public static final String END_OF_INP_IN_MAP = "pig.invoke.close.in.map";
+
+    private static final String REDUCER_ESTIMATOR_KEY = "pig.exec.reducer.estimator";
+    private static final String REDUCER_ESTIMATOR_ARG_KEY =  "pig.exec.reducer.estimator.arg";
     
     /**
      * We will serialize the POStore(s) present in map and reduce in lists in
@@ -259,7 +262,7 @@ public class JobControlCompiler{
                 if(mro instanceof NativeMapReduceOper) {
                     return null;
                 }
-                Job job = getJob(mro, conf, pigContext);
+                Job job = getJob(plan, mro, conf, pigContext);
                 jobMroMap.put(job, mro);
                 jobCtrl.addJob(job);
             }
@@ -319,13 +322,13 @@ public class JobControlCompiler{
      * the reduce plan and serializes it so that the PigMapReduce class can use it to package
      * the indexed tuples received by the reducer.
      * @param mro - The MapReduceOper for which the JobConf is required
-     * @param conf - the Configuration object from which JobConf is built
+     * @param config - the Configuration object from which JobConf is built
      * @param pigContext - The PigContext passed on from execution engine
      * @return Job corresponding to mro
      * @throws JobCreationException
      */
     @SuppressWarnings({ "unchecked", "deprecation" })
-    private Job getJob(MapReduceOper mro, Configuration config, PigContext pigContext) throws JobCreationException{
+    private Job getJob(MROperPlan plan, MapReduceOper mro, Configuration config, PigContext pigContext) throws JobCreationException{
         org.apache.hadoop.mapreduce.Job nwJob = null;
         
         try{
@@ -339,6 +342,7 @@ public class JobControlCompiler{
         ArrayList<FileSpec> inp = new ArrayList<FileSpec>();
         ArrayList<List<OperatorKey>> inpTargets = new ArrayList<List<OperatorKey>>();
         ArrayList<String> inpSignatureLists = new ArrayList<String>();
+        ArrayList<Long> inpLimits = new ArrayList<Long>();
         ArrayList<POStore> storeLocations = new ArrayList<POStore>();
         Path tmpLocation = null;
         
@@ -373,18 +377,16 @@ public class JobControlCompiler{
         }
                 
         try{        
+            adjustNumReducers(plan, mro, conf, nwJob);
+
             //Process the POLoads
             List<POLoad> lds = PlanHelper.getLoads(mro.mapPlan);
             
             if(lds!=null && lds.size()>0){
                 for (POLoad ld : lds) {
                     LoadFunc lf = ld.getLoadFunc();
-                    // Call setLocation as a hacky way of letting a LoadFunc fix up the Job.
-                    // Note that setLocation will get called on the loadFuncs later, as well.
-                    // That's ok as setLocation getting called multiple times is documented behavior.
-                    if (lf !=null) {
-                        lf.setLocation(ld.getLFile().getFileName(), nwJob);
-                    }
+                    lf.setLocation(ld.getLFile().getFileName(), nwJob);
+                    
                     //Store the inp filespecs
                     inp.add(ld.getLFile());
                     
@@ -399,6 +401,7 @@ public class JobControlCompiler{
                     }
                     inpTargets.add(ldSucKeys);
                     inpSignatureLists.add(ld.getSignature());
+                    inpLimits.add(ld.getLimit());
                     //Remove the POLoad from the plan
                     if (!pigContext.inIllustrator)
                         mro.mapPlan.remove(ld);
@@ -428,6 +431,7 @@ public class JobControlCompiler{
             conf.set("pig.inputs", ObjectSerializer.serialize(inp));
             conf.set("pig.inpTargets", ObjectSerializer.serialize(inpTargets));
             conf.set("pig.inpSignatures", ObjectSerializer.serialize(inpSignatureLists));
+            conf.set("pig.inpLimits", ObjectSerializer.serialize(inpLimits));
             conf.set("pig.pigContext", ObjectSerializer.serialize(pigContext));
             conf.set("udf.import.list", ObjectSerializer.serialize(PigContext.getPackageImportList()));
             // this is for unit tests since some don't create PigServer
@@ -472,13 +476,13 @@ public class JobControlCompiler{
             for (POStore st: mapStores) {
                 storeLocations.add(st);
                 StoreFuncInterface sFunc = st.getStoreFunc();
-                sFunc.setStoreLocation(st.getSFile().getFileName(), nwJob);
+                sFunc.setStoreLocation(st.getSFile().getFileName(), new org.apache.hadoop.mapreduce.Job(nwJob.getConfiguration()));
             }
 
             for (POStore st: reduceStores) {
                 storeLocations.add(st);
                 StoreFuncInterface sFunc = st.getStoreFunc();
-                sFunc.setStoreLocation(st.getSFile().getFileName(), nwJob);
+                sFunc.setStoreLocation(st.getSFile().getFileName(), new org.apache.hadoop.mapreduce.Job(nwJob.getConfiguration()));
             }
 
             // the OutputFormat we report to Hadoop is always PigOutputFormat
@@ -588,14 +592,6 @@ public class JobControlCompiler{
                     mro.reducePlan.remove(pack);
                 nwJob.setMapperClass(PigMapReduce.Map.class);
                 nwJob.setReducerClass(PigMapReduce.Reduce.class);
-                
-                // first check the PARALLE in query, then check the defaultParallel in PigContext, and last do estimation
-                if (mro.requestedParallelism > 0)
-                    nwJob.setNumReduceTasks(mro.requestedParallelism);
-		else if (pigContext.defaultParallel > 0)
-                    conf.set("mapred.reduce.tasks", ""+pigContext.defaultParallel);
-                else
-                    estimateNumberOfReducers(conf,lds);
                 
                 if (mro.customPartitioner != null)
                 	nwJob.setPartitionerClass(PigContext.resolveClassName(mro.customPartitioner));
@@ -737,90 +733,59 @@ public class JobControlCompiler{
             throw new JobCreationException(msg, errCode, PigException.BUG, e);
         }
     }
-    
+
+    public void adjustNumReducers(MROperPlan plan, MapReduceOper mro, Configuration conf,
+            org.apache.hadoop.mapreduce.Job nwJob) throws IOException {
+        List<PhysicalOperator> loads = mro.mapPlan.getRoots();
+        List<POLoad> lds = new ArrayList<POLoad>();
+        for (PhysicalOperator ld : loads) {
+            lds.add((POLoad)ld);
+        }
+        int jobParallelism = -1;
+        int estimatedParallelism = estimateNumberOfReducers(conf, lds, nwJob);
+        if (mro.requestedParallelism > 0) {
+            jobParallelism = mro.requestedParallelism;
+        } else if (pigContext.defaultParallel > 0) {
+            jobParallelism = pigContext.defaultParallel;
+        } else {
+            jobParallelism = estimatedParallelism;
+        }
+        // Special case: Skewed Join and Order set parallelism to 1 even when no parallelism is specified.
+        if ((mro.isSkewedJoin() || mro.isGlobalSort()) && jobParallelism == 1) {
+            jobParallelism = estimatedParallelism;
+        }
+        if (mro.isSampler() && jobParallelism == 1) {
+            // Note: this is suboptimal, as the number of reducers communicated to the
+            // sampler is only based on the sampler inputs, meaning, the left side in the case
+            // of a skewed join. Ideally, we'd take into account the right side, as well.
+            ParallelConstantVisitor visitor =
+              new ParallelConstantVisitor(mro.reducePlan, estimatedParallelism);
+            visitor.visit();
+        }
+        log.info("Setting Parallelism to " + jobParallelism);
+        mro.requestedParallelism = jobParallelism;
+        conf.setInt("mapred.reduce.tasks", jobParallelism);
+    }
+
     /**
-     * Currently the estimation of reducer number is only applied to HDFS, The estimation is based on the input size of data storage on HDFS.
-     * Two parameters can been configured for the estimation, one is pig.exec.reducers.max which constrain the maximum number of reducer task (default is 999). The other
-     * is pig.exec.reducers.bytes.per.reducer(default value is 1000*1000*1000) which means the how much data can been handled for each reducer.
-     * e.g. the following is your pig script
-     * a = load '/data/a';
-     * b = load '/data/b';
-     * c = join a by $0, b by $0;
-     * store c into '/tmp';
-     * 
-     * The size of /data/a is 1000*1000*1000, and size of /data/b is 2*1000*1000*1000.
-     * Then the estimated reducer number is (1000*1000*1000+2*1000*1000*1000)/(1000*1000*1000)=3
+     * Looks up the estimator from REDUCER_ESTIMATOR_KEY and invokes it to find the number of
+     * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputSizeReducerEstimator.
      * @param conf
      * @param lds
      * @throws IOException
      */
-    static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds) throws IOException {
-           long bytesPerReducer = conf.getLong("pig.exec.reducers.bytes.per.reducer", (1000 * 1000 * 1000));
-        int maxReducers = conf.getInt("pig.exec.reducers.max", 999);
-        long totalInputFileSize = getTotalInputFileSize(conf, lds);
-       
-        log.info("BytesPerReducer=" + bytesPerReducer + " maxReducers="
-            + maxReducers + " totalInputFileSize=" + totalInputFileSize);
-        
-        int reducers = (int)Math.ceil((totalInputFileSize+0.0) / bytesPerReducer);
-        reducers = Math.max(1, reducers);
-        reducers = Math.min(maxReducers, reducers);
-        conf.setInt("mapred.reduce.tasks", reducers);
+    public static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds,
+                                        org.apache.hadoop.mapreduce.Job job) throws IOException {
+        PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
+          new InputSizeReducerEstimator() :
+          PigContext.instantiateObjectFromParams(conf,
+                  REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
 
-        log.info("Neither PARALLEL nor default parallelism is set for this job. Setting number of reducers to " + reducers);
-        return reducers;
+        log.info("Using reducer estimator: " + estimator.getClass().getName());
+        int numberOfReducers = estimator.estimateNumberOfReducers(conf, lds, job);
+        return numberOfReducers;
     }
 
-    private static long getTotalInputFileSize(Configuration conf, List<POLoad> lds) throws IOException {
-        List<String> inputs = new ArrayList<String>();
-        if(lds!=null && lds.size()>0){
-            for (POLoad ld : lds) {
-                inputs.add(ld.getLFile().getFileName());
-            }
-        }
-        long size = 0;
-        
-        for (String input : inputs){
-            //Using custom uri parsing because 'new Path(location).toUri()' fails
-            // for some valid uri's (eg jdbc style), and 'new Uri(location)' fails
-            // for valid hdfs paths that contain curly braces
-            if(!UriUtil.isHDFSFileOrLocalOrS3N(input)){
-                //skip  if it is not hdfs or local file or s3n
-                continue;
-            }
-
-            //the input file location might be a list of comma separeated files, 
-            // separate them out
-            for(String location : LoadFunc.getPathStrings(input)){
-                if(! UriUtil.isHDFSFileOrLocalOrS3N(location)){
-                    continue;
-                }
-                Path path = new Path(location);
-                FileSystem fs = path.getFileSystem(conf);
-                FileStatus[] status=fs.globStatus(path);
-                if (status != null){
-                    for (FileStatus s : status){
-                        size += getPathLength(fs, s);
-                    }
-                }
-            }
-        }
-        return size;
-   }
-   
-    private static long getPathLength(FileSystem fs,FileStatus status) throws IOException{
-        if (!status.isDir()){
-            return status.getLen();
-        }else{
-            FileStatus[] children = fs.listStatus(status.getPath());
-            long size=0;
-            for (FileStatus child : children){
-                size +=getPathLength(fs, child);
-            }
-            return size;
-        }
-    }
-        
     public static class PigSecondaryKeyGroupComparator extends WritableComparator {
         public PigSecondaryKeyGroupComparator() {
 //            super(TupleFactory.getInstance().tupleClass(), true);
@@ -1453,4 +1418,37 @@ public class JobControlCompiler{
             }
         }
     }   
+
+    private static class ParallelConstantVisitor extends PhyPlanVisitor {
+
+        private int rp;
+
+        private boolean replaced = false;
+
+        public ParallelConstantVisitor(PhysicalPlan plan, int rp) {
+            super(plan, new DepthFirstWalker<PhysicalOperator, PhysicalPlan>(
+                    plan));
+            this.rp = rp;
+}
+
+        @Override
+        public void visitConstant(ConstantExpression cnst) throws VisitorException {
+            if (cnst.getRequestedParallelism() == -1) {
+                Object obj = cnst.getValue();
+                if (obj instanceof Integer) {
+                    if (replaced) {
+                        // sample job should have only one ConstantExpression
+                        throw new VisitorException("Invalid reduce plan: more " +
+                                       "than one ConstantExpression found in sampling job");
+                    }
+                    cnst.setValue(rp);
+                    cnst.setRequestedParallelism(rp);
+                    replaced = true;
+                }
+            }
+        }
+
+        boolean isReplaced() { return replaced; }
+    }
+
 }

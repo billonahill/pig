@@ -81,7 +81,7 @@ sub replaceParameters
     $cmd =~ s/:DBNAME:/$testCmd->{'dbdb'}/g;
 #    $cmd =~ s/:LOCALINPATH:/$testCmd->{'localinpathbase'}/g;
 #    $cmd =~ s/:LOCALOUTPATH:/$testCmd->{'localoutpathbase'}/g;
-#    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
+    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
     $cmd =~ s/:BMPATH:/$testCmd->{'benchmarkPath'}/g;
     $cmd =~ s/:TMP:/$testCmd->{'tmpPath'}/g;
     $cmd =~ s/:HDFSTMP:/tmp\/$testCmd->{'runid'}/g;
@@ -261,6 +261,10 @@ sub runPigCmdLine
 
     # Add pig file and redirections 
     push(@cmd, $pigfile);
+
+    if (defined($testCmd->{'additional_cmd_args'})) {
+        push(@cmd, $testCmd->{'additional_cmd_args'});
+    }
     my $command= join (" ", @cmd) . " 1> $stdoutfile 2> $stderrfile";
 
     # Run the command
@@ -341,6 +345,7 @@ sub getPigCmd($$$)
 
     # set the PIG_CLASSPATH environment variable
 	my $pcp .= $testCmd->{'jythonjar'} if (defined($testCmd->{'jythonjar'}));
+    $pcp .= ":" . $testCmd->{'jrubyjar'} if (defined($testCmd->{'jrubyjar'}));
     $pcp .= ":" . $testCmd->{'classpath'} if (defined($testCmd->{'classpath'}));
 
     # Set it in our current environment.  It will get inherited by the IPC::Run
@@ -433,6 +438,9 @@ sub runPig
 
     push(@cmd, $pigfile);
 
+    if (defined($testCmd->{'additional_cmd_args'})) {
+        push(@cmd, @{$testCmd->{'additional_cmd_args'}});
+    }
 
     # Run the command
     print $log "$0::$className::$subName INFO: Going to run pig command: @cmd\n";
@@ -794,8 +802,6 @@ sub compareSingleOutput
 {
     my ($self, $testResult, $testOutput, $benchmarkOutput, $log) = @_;
 
-print $log "testResult: $testResult testOutput: $testOutput benchmarkOutput: $benchmarkOutput\n";
-
     # cksum the the two files to see if they are the same
     my ($testChksm, $benchmarkChksm);
     IPC::Run::run((['cat', $testOutput], '|', ['cksum']), \$testChksm,
@@ -855,7 +861,7 @@ sub countStores($$)
     # also note that this won't work if you comment out a store
     my @q = split(/\n/, $testCmd->{'pig'});
         for (my $i = 0; $i < @q; $i++) {
-            $count += $q[$i] =~ /store\s+[a-zA-Z][a-zA-Z0-9_]*\s+into/i;
+            $count += $q[$i] =~ /store\s+(\$)?[a-zA-Z][a-zA-Z0-9_]*\s+into/i;
     }
 
     return $count;

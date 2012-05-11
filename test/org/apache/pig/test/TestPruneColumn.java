@@ -2071,4 +2071,60 @@ public class TestPruneColumn extends TestCase {
         assertTrue(checkLogFileMessage(new String[]{"Columns pruned for A: $1"}));
     }
 
+    // See PIG-2534
+    @Test
+    public void testStream2() throws Exception {
+        File input1 = File.createTempFile("tmp", "");
+        input1.delete();
+        File input2 = File.createTempFile("tmp", "");
+        input2.delete();
+        
+        Util.createLocalInputFile(input1.getAbsolutePath(), new String[]
+                {"[key1#0,key2#5,key3#val3,key4#val4,key5#val5]"});
+        Util.createLocalInputFile(input2.getAbsolutePath(), new String[]
+                {"[key1#0,key2#5,key3#val3,key4#val4,key5#val5]"});
+        
+        pigServer.registerQuery("event_serve = LOAD '" + input1.getAbsolutePath() +
+                "' AS (s, m, l);");
+        pigServer.registerQuery("cm_data_raw = LOAD '" + input2.getAbsolutePath() +
+                "' AS (s, m, l);");
+        pigServer.registerQuery("cm_serve = FOREACH cm_data_raw GENERATE  s#'key3' AS f1,  s#'key4' AS f2, s#'key5' AS f3 ;");
+        pigServer.registerQuery("cm_serve_lowercase = stream cm_serve through `tr [:upper:] [:lower:]`;");
+        pigServer.registerQuery("cm_serve_final = FOREACH cm_serve_lowercase GENERATE  $0 AS cm_event_guid, $1 AS cm_receive_time, $2 AS cm_ctx_url;");
+        pigServer.registerQuery("event_serve_project = FOREACH  event_serve GENERATE  s#'key3' AS event_guid, s#'key4' AS receive_time;");
+        pigServer.registerQuery("event_serve_join = join cm_serve_final by (cm_event_guid), event_serve_project by (event_guid);");
+        Iterator<Tuple> iter = pigServer.openIterator("event_serve_join");
+        
+        String[] expected = new String[] {"(val3,val4,val5,val3,val4)"};
+
+        Util.checkQueryOutputsAfterSortRecursive(iter, expected, org.apache.pig.newplan.logical.Util.translateSchema(pigServer.dumpSchema("event_serve_join")));
+
+        assertTrue(checkLogFileMessage(new String[]{"Map key required for event_serve: $0->[key4, key3]", 
+                "Map key required for cm_data_raw: $0->[key4, key3, key5]"}));
+    }
+
+    // See PIG-2535
+    @Test
+    public void testStream3() throws Exception {
+
+        pigServer.registerQuery("event_serve = LOAD 'input1' AS (s, m, l);");
+        pigServer.registerQuery("raw = LOAD 'input2' AS (s, m, l);");
+
+        pigServer.registerQuery("SPLIT raw INTO " +
+            "serve_raw IF (( (chararray) (s#'type') == '0') AND ( (chararray) (s#'source') == '5'))," +
+            "cm_click_raw IF (( (chararray) (s#'type') == '1') AND ( (chararray) (s#'source') == '5'));");
+        pigServer.registerQuery("cm_serve = FOREACH serve_raw GENERATE  s#'cm_serve_id' AS cm_event_guid,  s#'cm_serve_timestamp_ms' AS cm_receive_time, s#'p_url' AS ctx ;");
+        pigServer.registerQuery("cm_serve_lowercase = stream cm_serve through `tr [:upper:] [:lower:]`;");
+        pigServer.registerQuery("cm_serve_final = FOREACH cm_serve_lowercase GENERATE  $0 AS cm_event_guid, $1 AS cm_receive_time, $2 AS ctx;");
+        pigServer.registerQuery("filtered = FILTER event_serve BY (chararray) (s#'filter_key') neq 'xxxx' AND (chararray) (s#'filter_key') neq 'yyyy';");
+        pigServer.registerQuery("event_serve_project = FOREACH filtered GENERATE s#'event_guid' AS event_guid, s#'receive_time' AS receive_time;");
+        pigServer.registerQuery("event_serve_join = join cm_serve_final by (cm_event_guid), event_serve_project by (event_guid);");
+
+
+        pigServer.explain("event_serve_join", System.out);
+
+        assertTrue(checkLogFileMessage(new String[]{"Map key required for event_serve: $0->[event_guid, receive_time, filter_key]",
+                "Map key required for raw: $0->[source, p_url, cm_serve_timestamp_ms, cm_serve_id, type]"}));
+    }
+
 }

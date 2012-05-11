@@ -38,6 +38,7 @@ import java.util.Vector;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.Level;
 import org.apache.pig.ExecType;
@@ -63,6 +64,8 @@ public class PigContext implements Serializable {
     public static final String JOB_NAME = "jobName";
     public static final String JOB_NAME_PREFIX= "PigLatin";
     public static final String JOB_PRIORITY = "jobPriority";
+    public static final String PIG_CMD_ARGS_REMAINDERS = "pig.cmd.args.remainders";
+    
     
     /* NOTE: we only serialize some of the stuff 
      * 
@@ -496,8 +499,45 @@ public class PigContext implements Serializable {
         String msg = "Could not resolve " + name + " using imports: " + packageImportList.get();
         throw new ExecException(msg, errCode, PigException.INPUT);
     }
-    
-    
+
+    /**
+     * A common Pig pattern for initializing objects via system properties is to support passing
+     * something like this on the command line:
+     * <code>-Dpig.notification.listener=MyClass</code>
+     * <code>-Dpig.notification.listener.arg=myConstructorStringArg</code>
+     *
+     * This method will properly initialize the class with the args, if they exist.
+     * @param conf
+     * @param classParamKey the property used to identify the class
+     * @param argParamKey the property used to identify the class args
+     * @param clazz The class that is expected
+     * @return
+     */
+    public static <T> T instantiateObjectFromParams(Configuration conf,
+                                                    String classParamKey,
+                                                    String argParamKey,
+                                                    Class<T> clazz) throws ExecException {
+      String className = conf.get(classParamKey);
+
+      if (className != null) {
+          FuncSpec fs;
+          if (conf.get(argParamKey) != null) {
+              fs = new FuncSpec(className, conf.get(argParamKey));
+          } else {
+              fs = new FuncSpec(className);
+          }
+          try {
+            return clazz.cast(PigContext.instantiateFuncFromSpec(fs));
+          }
+          catch (ClassCastException e) {
+              throw new ExecException("The class defined by " + classParamKey +
+                      " in conf is not of type " + clazz.getName(), e);
+          }
+      } else {
+          return null;
+      }
+    }
+
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static Object instantiateFuncFromSpec(FuncSpec funcSpec)  {
         Object ret;

@@ -36,6 +36,7 @@ import org.apache.pig.FuncSpec;
 import org.apache.pig.PigServer;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.impl.PigContext;
+import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 import org.apache.pig.scripting.ScriptEngine;
@@ -44,6 +45,7 @@ import org.python.core.Py;
 import org.python.core.PyException;
 import org.python.core.PyFrame;
 import org.python.core.PyFunction;
+import org.python.core.PyInteger;
 import org.python.core.PyJavaPackage;
 import org.python.core.PyObject;
 import org.python.core.PyString;
@@ -194,6 +196,16 @@ public class JythonScriptEngine extends ScriptEngine {
                     }
                 }
             } catch (PyException e) {
+                if (e.match(Py.SystemExit)) {
+                    PyObject value = e.value;
+                    if (PyException.isExceptionInstance(e.value)) {
+                        value = value.__findattr__("code");
+                    }
+                    if (new  PyInteger(0).equals(value)) {
+                        LOG.info("Script invoked sys.exit(0)");
+                        return;
+                    }
+                }
                 String message = "Python Error. " + e;
                 throw new ExecException(message, 1121, e);
             }
@@ -340,6 +352,16 @@ public class JythonScriptEngine extends ScriptEngine {
             registerFunctions(scriptFile, null, pigContext);
         }
 
+        if (pigContext.getProperties().get(PigContext.PIG_CMD_ARGS_REMAINDERS)!=null) {
+            try {
+                String[] argv = (String[])ObjectSerializer.deserialize(
+                        pigContext.getProperties().getProperty(PigContext.PIG_CMD_ARGS_REMAINDERS));
+                PythonInterpreter.initialize(null, null, argv);
+            } catch (IOException e) {
+                throw new ExecException("Cannot deserialize command line arguments", e);
+            }
+        }
+        
         Interpreter.setMain(true);
         FileInputStream fis = new FileInputStream(scriptFile);
         try {

@@ -165,7 +165,8 @@ final class SimplePigStats extends PigStats {
     
     @Override
     public boolean isSuccessful() {
-        return (returnCode == ReturnCode.SUCCESS);
+        return (getNumberJobs()==0 && returnCode==ReturnCode.UNKNOWN
+                || returnCode == ReturnCode.SUCCESS);
     }
  
     @Override
@@ -399,8 +400,9 @@ final class SimplePigStats extends PigStats {
     boolean isInitialized() {
         return startTime > 0;
     }
-    
-    JobClient getJobClient() {
+
+    @Override
+    public JobClient getJobClient() {
         return jobClient;
     }
     

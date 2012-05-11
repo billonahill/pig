@@ -155,6 +155,7 @@ statement : SEMI_COLON!
           | split_statement  
           | inline_statement        
           | import_statement
+          | realias_statement
 ;
 
 import_statement : import_clause SEMI_COLON!
@@ -168,6 +169,13 @@ split_statement : split_clause SEMI_COLON!
 
 general_statement : ( alias EQUAL )? (op_clause parallel_clause? | LEFT_PAREN op_clause parallel_clause? RIGHT_PAREN) SEMI_COLON 
                  -> ^( STATEMENT alias? op_clause parallel_clause? )
+;
+
+realias_statement : realias_clause SEMI_COLON!
+;
+
+realias_clause : alias EQUAL identifier 
+    -> ^(REALIAS alias identifier)
 ;
 
 parallel_clause : PARALLEL^ INTEGER
@@ -315,7 +323,9 @@ tuple_type : TUPLE? LEFT_PAREN field_def_list? RIGHT_PAREN
           -> ^( TUPLE_TYPE field_def_list? )
 ;
 
-bag_type : BAG? LEFT_CURLY ( ( identifier COLON )? tuple_type )? RIGHT_CURLY
+bag_type : BAG? LEFT_CURLY ( null_keyword COLON tuple_type? ) RIGHT_CURLY
+        -> ^( BAG_TYPE tuple_type? )
+         | BAG? LEFT_CURLY ( ( identifier COLON )? tuple_type )? RIGHT_CURLY
         -> ^( BAG_TYPE identifier? tuple_type? )
 ;
 
@@ -754,6 +764,7 @@ eid : rel_str_op
     | null_keyword
     | TRUE
     | FALSE
+    | REALIAS
 ;
 
 // relational operator

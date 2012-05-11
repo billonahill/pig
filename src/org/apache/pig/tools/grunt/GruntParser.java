@@ -786,7 +786,12 @@ public class GruntParser extends PigScriptParser {
             log.warn("'pwd' statement is ignored while processing 'explain -script' or '-check'");
         }
     }
-
+    
+    @Override
+	protected void processHistory(boolean withNumbers) {
+    	mPigServer.printHistory(withNumbers);
+    }
+    
     @Override
     protected void printHelp() 
     {
@@ -828,6 +833,8 @@ public class GruntParser extends PigScriptParser {
         System.out.println("        stream.skippath - String that contains the path. This is used by streaming.");
         System.out.println("        any hadoop property.");
         System.out.println("    help - Display this message.");
+        System.out.println("    history [-n] - Display the list statements in cache.");
+        System.out.println("        -n Hide line numbers. ");
         System.out.println("    quit - Quit the grunt shell.");
     }
 
@@ -1009,11 +1016,14 @@ public class GruntParser extends PigScriptParser {
                 int ret = executor.waitFor();
                 outPrinter.join();
                 errPrinter.join();
-                if (ret != 0) {
-                    log.warn("Command failed with exit code = " + ret);
+                if (ret != 0 && !mInteractive) {
+                    String s = LoadFunc.join(
+                            (AbstractList<String>) Arrays.asList(cmdTokens), " ");
+                    throw new IOException("sh command '" + s
+                            + "' failed. Please check output logs for details");
                 }
             } catch (Exception e) {
-                log.warn("Exception raised from Shell command " + e.getLocalizedMessage());
+                throw new IOException(e);
             }
         } else {
             log.warn("'sh' statement is ignored while processing 'explain -script' or '-check'");
@@ -1151,4 +1161,5 @@ public class GruntParser extends PigScriptParser {
     private int mNumSucceededJobs;
     private FsShell shell;
     private boolean mScriptIllustrate;
+    
 }

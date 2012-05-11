@@ -38,7 +38,6 @@ import org.apache.hadoop.mapred.JobID;
 import org.apache.hadoop.mapred.RunningJob;
 import org.apache.hadoop.mapred.jobcontrol.Job;
 import org.apache.hadoop.mapred.jobcontrol.JobControl;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.pig.ExecType;
 import org.apache.pig.PigException;
 import org.apache.pig.PigWarning;
@@ -64,7 +63,7 @@ import org.apache.pig.impl.plan.VisitorException;
 import org.apache.pig.impl.plan.CompilationMessageCollector.MessageType;
 import org.apache.pig.impl.util.ConfigurationValidator;
 import org.apache.pig.impl.util.LogUtils;
-import org.apache.pig.impl.util.Utils;
+import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.tools.pigstats.PigStats;
 import org.apache.pig.tools.pigstats.PigStatsUtil;
 import org.apache.pig.tools.pigstats.ScriptState;
@@ -249,8 +248,17 @@ public class MapReduceLauncher extends Launcher{
             }
             
             completeFailedJobsInThisRun.clear();
-            
-            Thread jcThread = new Thread(jc);
+
+            // Set the thread UDFContext so registered classes are available.
+            final UDFContext udfContext = UDFContext.getUDFContext();
+            Thread jcThread = new Thread(jc) {
+                @Override
+                public void run() {
+                    UDFContext.setUdfContext(udfContext.clone()); //PIG-2576
+                    super.run();
+                }
+            };
+
             jcThread.setUncaughtExceptionHandler(jctExceptionHandler);
             
             jcThread.setContextClassLoader(PigContext.getClassLoader());
@@ -271,11 +279,22 @@ public class MapReduceLauncher extends Launcher{
 
             			jobsAssignedIdInThisRun.add(job);
             			log.info("HadoopJobId: "+job.getAssignedJobID());
+            			
+                        // display the aliases being processed
+                        MapReduceOper mro = jcc.getJobMroMap().get(job);
+                        if (mro != null) {
+                            String alias = ScriptState.get().getAlias(mro);
+                            log.info("Processing aliases " + alias);
+                        }
+
+                        
             			if(jobTrackerLoc != null){
             				log.info("More information at: http://"+ jobTrackerLoc+
             						"/jobdetails.jsp?jobid="+job.getAssignedJobID());
             			}  
-            			
+
+                        // update statistics for this job so jobId is set
+                        PigStatsUtil.addJobStats(job);
             			ScriptState.get().emitJobStartedNotification(
                                 job.getAssignedJobID().toString());                        
             		}
@@ -506,7 +525,6 @@ public class MapReduceLauncher extends Launcher{
             pc.getProperties().getProperty(
                     "last.input.chunksize", POJoinPackage.DEFAULT_CHUNK_SIZE);
         
-        //String prop = System.getProperty("pig.exec.nocombiner");
         String prop = pc.getProperties().getProperty("pig.exec.nocombiner");
         if (!pc.inIllustrator && !("true".equals(prop)))  {
             boolean doMapAgg = 
@@ -522,10 +540,12 @@ public class MapReduceLauncher extends Launcher{
         SampleOptimizer so = new SampleOptimizer(plan, pc);
         so.visit();
         
+        // We must ensure that there is only 1 reducer for a limit. Add a single-reducer job.
+        if (!pc.inIllustrator) {
         LimitAdjuster la = new LimitAdjuster(plan, pc);
         la.visit();
         la.adjust();
-        
+        }
         // Optimize to use secondary sort key if possible
         prop = pc.getProperties().getProperty("pig.exec.nosecondarykey");
         if (!pc.inIllustrator && !("true".equals(prop)))  {
@@ -611,6 +631,7 @@ public class MapReduceLauncher extends Launcher{
      */
     class JobControlThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
         
+        @Override
         public void uncaughtException(Thread thread, Throwable throwable) {
             jobControlExceptionStackTrace = getStackStraceStr(throwable);
             try {	

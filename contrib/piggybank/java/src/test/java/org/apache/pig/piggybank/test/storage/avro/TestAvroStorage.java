@@ -61,13 +61,15 @@ public class TestAvroStorage {
       };
 
     private static String getInputFile(String file) {
-        return "file:///" + System.getProperty("user.dir") + "/" + basedir + file;
+        return "file://" + System.getProperty("user.dir") + "/" + basedir + file;
     }
 
     final private String testArrayFile = getInputFile("test_array.avro");
     final private String testRecordFile = getInputFile("test_record.avro");
     final private String testRecordSchema = getInputFile("test_record.avsc");
     final private String testTextFile = getInputFile("test_record.txt");
+    final private String testSingleTupleBagFile = getInputFile("messages.avro");
+    final private String testNoExtensionFile = getInputFile("test_no_extension");
 
     @BeforeClass
     public static void setup() throws ExecException {
@@ -288,6 +290,64 @@ public class TestAvroStorage {
                  " \"field1\":  \"def:browser_id\", " +
                 "  \"field3\": \"def:act_content\" " +
                " }');"
+           };
+        testAvroStorage( queries);
+        verifyResults(output, expected);
+    }
+    
+    @Test
+    public void testSingleFieldTuples() throws IOException {
+        String output= outbasedir + "testSingleFieldTuples";
+        String expected = basedir + "expected_testSingleFieldTuples.avro";
+        deleteDirectory(new File(output));
+        String [] queries = {
+                " messages = LOAD '" + testSingleTupleBagFile + " ' USING org.apache.pig.piggybank.storage.avro.AvroStorage ();",
+                " a = foreach (group messages by user_id) { sorted = order messages by message_id DESC; GENERATE group AS user_id, sorted AS messages; };",
+                " STORE a INTO '" + output + "' " +
+                        " USING org.apache.pig.piggybank.storage.avro.AvroStorage ();"
+        };
+        testAvroStorage( queries);
+    }
+    
+    @Test
+    public void testFileWithNoExtension() throws IOException {
+        String output= outbasedir + "testFileWithNoExtension";
+        String expected = basedir + "expected_testFileWithNoExtension.avro";
+        deleteDirectory(new File(output));
+        String [] queries = {
+                " avro = LOAD '" + testNoExtensionFile + " ' USING org.apache.pig.piggybank.storage.avro.AvroStorage ();",
+                " avro1 = FILTER avro BY member_id > 1211;",
+                " avro2 = FOREACH avro1 GENERATE member_id, browser_id, tracking_time, act_content ;",
+                " STORE avro2 INTO '" + output + "' " +
+                        " USING org.apache.pig.piggybank.storage.avro.AvroStorage (" +
+                        "'{\"data\":  \"" + testNoExtensionFile + "\" ," +
+                        "  \"field0\": \"int\", " +
+                        " \"field1\":  \"def:browser_id\", " +
+                        "  \"field3\": \"def:act_content\" " +
+                        " }');"
+        };
+        testAvroStorage( queries);
+        verifyResults(output, expected);
+    }
+
+    // Same as above, just without using json in the constructor
+    @Test
+    public void testRecordWithFieldSchemaFromTextWithSchemaFile2() throws IOException {
+        PigSchema2Avro.setTupleIndex(1);
+        String output= outbasedir + "testRecordWithFieldSchemaFromTextWithSchemaFile2";
+        String expected = basedir + "expected_testRecordWithFieldSchema.avro";
+        deleteDirectory(new File(output));
+        String [] queries = {
+          " avro = LOAD '" + testTextFile + "' AS (member_id:int, browser_id:chararray, tracking_time:long, act_content:bag{inner:tuple(key:chararray, value:chararray)});",
+          " avro1 = FILTER avro BY member_id > 1211;",
+          " avro2 = FOREACH avro1 GENERATE member_id, browser_id, tracking_time, act_content ;",
+          " STORE avro2 INTO '" + output + "' " +
+                " USING org.apache.pig.piggybank.storage.avro.AvroStorage (" +
+                "'schema_file', '" + testRecordSchema + "'," +
+                "'field0','int'," +
+                "'field1','def:browser_id'," +
+                "'field3','def:act_content'" +
+                ");"
            };
         testAvroStorage( queries);
         verifyResults(output, expected);

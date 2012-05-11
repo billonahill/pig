@@ -27,7 +27,6 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -74,7 +73,6 @@ import org.apache.pig.impl.plan.CompilationMessageCollector;
 import org.apache.pig.impl.plan.CompilationMessageCollector.MessageType;
 import org.apache.pig.impl.streaming.StreamingCommand;
 import org.apache.pig.impl.util.LogUtils;
-import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.PropertiesUtil;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
@@ -82,8 +80,6 @@ import org.apache.pig.newplan.logical.expression.LogicalExpressionPlan;
 import org.apache.pig.newplan.logical.expression.LogicalExpressionVisitor;
 import org.apache.pig.newplan.logical.expression.ScalarExpression;
 import org.apache.pig.newplan.logical.optimizer.AllExpressionVisitor;
-import org.apache.pig.newplan.logical.optimizer.LogicalPlanOptimizer;
-import org.apache.pig.newplan.logical.optimizer.SchemaResetter;
 import org.apache.pig.newplan.logical.relational.LOForEach;
 import org.apache.pig.newplan.logical.relational.LOLoad;
 import org.apache.pig.newplan.logical.relational.LOStore;
@@ -93,7 +89,6 @@ import org.apache.pig.newplan.logical.relational.LogicalSchema;
 import org.apache.pig.newplan.logical.visitor.CastLineageSetter;
 import org.apache.pig.newplan.logical.visitor.ColumnAliasConversionVisitor;
 import org.apache.pig.newplan.logical.visitor.ScalarVariableValidator;
-import org.apache.pig.newplan.logical.visitor.ProjStarInUdfExpander;
 import org.apache.pig.newplan.logical.visitor.ScalarVisitor;
 import org.apache.pig.newplan.logical.visitor.SchemaAliasVisitor;
 import org.apache.pig.newplan.logical.visitor.TypeCheckingRelVisitor;
@@ -109,7 +104,6 @@ import org.apache.pig.tools.parameters.ParameterSubstitutionPreprocessor;
 import org.apache.pig.tools.pigstats.JobStats;
 import org.apache.pig.tools.pigstats.OutputStats;
 import org.apache.pig.tools.pigstats.PigStats;
-import org.apache.pig.tools.pigstats.PigStatsUtil;
 import org.apache.pig.tools.pigstats.ScriptState;
 import org.apache.pig.tools.pigstats.PigStats.JobGraph;
 
@@ -171,7 +165,7 @@ public class PigServer {
      * The current Graph the grunt shell is working on.
      */
     private Graph currDAG;
-
+    
     protected final PigContext pigContext;
     
     private String jobName;
@@ -512,8 +506,7 @@ public class PigServer {
      */
     public void registerCode(String path, String scriptingLang, String namespace)
     throws IOException {
-        File f = new File(path);
-
+        File f = FileLocalizer.fetchFile(pigContext.getProperties(), path).file;
         if (!f.canRead()) {
             int errCode = 4002;
             String msg = "Can't read file: " + path;
@@ -522,9 +515,9 @@ public class PigServer {
         }
         if(scriptingLang != null) {
             ScriptEngine se = ScriptEngine.getInstance(scriptingLang);    
-            se.registerFunctions(path, namespace, pigContext);
+            se.registerFunctions(f.getPath(), namespace, pigContext);
         }
-        pigContext.addScriptFile(path);
+        pigContext.addScriptFile(f.getPath());
     }
 
     /**
@@ -1202,14 +1195,27 @@ public class PigServer {
             return exgen.getExamples();
         } catch (ExecException e) {
             e.printStackTrace(System.out);
-            throw new IOException("ExecException : " + e.getMessage());
+            throw new IOException("ExecException" , e);
         } catch (Exception e) {
             e.printStackTrace(System.out);
-            throw new IOException("Exception : " + e.getMessage());
+            throw new IOException("Exception ", e);
         }
      
     }
-
+    
+    public void printHistory(boolean withNumbers) {
+    	
+    	List<String> sc = currDAG.getScriptCache();
+    	
+    	if(!sc.isEmpty()) {
+    		for(int i = 0 ; i < sc.size(); i++) {
+    			if(withNumbers) System.out.print((i+1)+"   ");
+    			System.out.println(sc.get(i));
+    		}    		
+    	}
+    	
+    }
+    
     private void buildStorePlan(String alias) throws IOException {
         currDAG.parseQuery();
         currDAG.buildPlan( alias );
@@ -1233,7 +1239,7 @@ public class PigServer {
         if( jobPriority != null ) {
             pigContext.getProperties().setProperty( PigContext.JOB_PRIORITY, jobPriority );
         }
-       
+
         // In this plan, all stores in the plan will be executed. They should be ignored if the plan is reused.
         currDAG.countExecutedStores();
        
@@ -1242,7 +1248,9 @@ public class PigServer {
         if( currDAG.lp.size() == 0 ) {
            return PigStats.get(); 
         }
-        
+
+        pigContext.getProperties().setProperty("pig.logical.plan.signature", currDAG.lp.getSignature());
+
         PigStats stats = executeCompiledLogicalPlan();
         
         return stats;
@@ -1569,6 +1577,10 @@ public class PigServer {
                 scriptCache.remove( scriptCache.size() -1 );
                 throw ex;
             }
+        }
+        
+        public List<String> getScriptCache() {
+        	return scriptCache;
         }
 
         /**

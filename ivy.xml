@@ -178,7 +178,7 @@
     <dependency org="net.java.dev.javacc" name="javacc" rev="${javacc.version}"
       conf="compile->master"/>
     <dependency org="junit" name="junit" rev="${junit.version}"
-      conf="test->default"/>
+      conf="compile->master"/>
     <dependency org="com.google.code.p.arat" name="rat-lib" rev="${rats-lib.version}"
       conf="releaseaudit->default"/>
     <dependency org="org.codehaus.jackson" name="jackson-mapper-asl" rev="${jackson.version}"
@@ -197,6 +197,8 @@
     <dependency org="org.apache.zookeeper" name="zookeeper" rev="${zookeeper.version}" conf="compile->master"/>
     <dependency org="org.jboss.netty" name="netty" rev="3.2.2.Final" conf="compile->master"/>
     <dependency org="dk.brics.automaton" name="automaton" rev="1.11-8" conf="compile->default"/>
+
+    <dependency org="org.jruby" name="jruby-complete" rev="${jruby.version}" conf="compile->master"/>
 
     <dependency org="org.apache.hbase" name="hbase" rev="${hbase.version}" conf="compile->master">
       <artifact name="hbase" type="jar"/>
