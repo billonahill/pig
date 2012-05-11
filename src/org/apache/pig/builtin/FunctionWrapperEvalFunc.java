@@ -15,8 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pig;
+package org.apache.pig.builtin;
 
+import org.apache.pig.ExceptionalFunction;
+import org.apache.pig.PrimitiveEvalFunc;
 import org.apache.pig.impl.PigContext;
 
 import java.io.IOException;
@@ -32,7 +34,7 @@ import java.util.HashMap;
  * take args in the constructor, initialize the function in a subclass of this one and call
  * <code>super(function)</code>.
  * <P>
- * Example: <code>DEFINE myUdf org.apache.pig.FunctionWrapperEvalFunc('MyFunction')</code>
+ * Example: <code>DEFINE myUdf FunctionWrapperEvalFunc('MyFunction')</code>
  *
  */
 public class FunctionWrapperEvalFunc extends PrimitiveEvalFunc<Object, Object> {

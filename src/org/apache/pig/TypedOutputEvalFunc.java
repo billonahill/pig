@@ -19,9 +19,7 @@ package org.apache.pig;
 
 import com.google.common.collect.Maps;
 import org.apache.hadoop.mapreduce.Counter;
-import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.tools.pigstats.PigStatusReporter;
 
 import java.io.IOException;
@@ -48,11 +46,6 @@ public abstract class TypedOutputEvalFunc<OUT> extends EvalFunc<OUT> {
     @SuppressWarnings("unchecked")
     public TypedOutputEvalFunc() {
         outTypeClass = (Class<OUT>) getTypeArguments(TypedOutputEvalFunc.class, getClass()).get(0);
-    }
-
-    @Override
-    public Schema outputSchema(Schema input) {
-        return new Schema(new Schema.FieldSchema("output", DataType.findType(outTypeClass)));
     }
 
     // Increment Hadoop counters for bad inputs which are either null or too small.
