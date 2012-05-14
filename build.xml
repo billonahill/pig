@@ -677,6 +677,7 @@
                 <include name="jackson-core-asl-${jackson.version}.jar" />
                 <include name="joda-time-${joda-time.version}.jar" />
                 <include name="guava-${guava.version}.jar" />
+                <include name="guice-${guice.version}.jar" />
                 <include name="automaton-${automaton.version}.jar" />
                 <include name="avro-${avro.version}.jar" />
                 <include name="hbase-${hbase.version}.jar" />

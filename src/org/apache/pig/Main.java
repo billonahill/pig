@@ -106,10 +106,6 @@ public class Main {
     private static final String PROP_FILT_SIMPL_OPT
         = "pig.exec.filterLogicExpressionSimplifier";
 
-    protected static final String PROGRESS_NOTIFICATION_LISTENER_KEY = "pig.notification.listener";
-
-    protected static final String PROGRESS_NOTIFICATION_LISTENER_ARG_KEY = "pig.notification.listener.arg";
-
     static {
        Attributes attr=null;
        try {
@@ -168,6 +164,9 @@ static int run(String args[], PigProgressNotificationListener listener) {
         Properties properties = new Properties();
         PropertiesUtil.loadDefaultProperties(properties);
         properties.putAll(ConfigurationUtil.toProperties(conf));
+
+        //TODO: not sure where the best place to do this is
+        GuiceInjector.init(properties);
 
         if (listener == null) {
             listener = makeListener(properties);
@@ -645,16 +644,9 @@ static int run(String args[], PigProgressNotificationListener listener) {
 }
 
 protected static PigProgressNotificationListener makeListener(Properties properties) {
-
-    try {
-        return PigContext.instantiateObjectFromParams(
-                    ConfigurationUtil.toConfiguration(properties),
-                    PROGRESS_NOTIFICATION_LISTENER_KEY,
-                    PROGRESS_NOTIFICATION_LISTENER_ARG_KEY,
-                    PigProgressNotificationListener.class);
-    } catch (ExecException e) {
-        throw new RuntimeException(e);
-    }
+    PigProgressNotificationListener ppnl =
+            GuiceInjector.get().getInstance(PigProgressNotificationListener.class);
+    return ppnl;
 }
 
 private static int getReturnCodeForStats(int[] stats) {

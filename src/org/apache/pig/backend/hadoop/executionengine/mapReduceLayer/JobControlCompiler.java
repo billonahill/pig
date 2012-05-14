@@ -47,6 +47,7 @@ import org.apache.hadoop.mapred.JobPriority;
 import org.apache.hadoop.mapred.jobcontrol.Job;
 import org.apache.hadoop.mapred.jobcontrol.JobControl;
 import org.apache.pig.ComparisonFunc;
+import org.apache.pig.GuiceInjector;
 import org.apache.pig.ExecType;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.PigException;
@@ -132,9 +133,6 @@ public class JobControlCompiler{
 
     public static final String END_OF_INP_IN_MAP = "pig.invoke.close.in.map";
 
-    private static final String REDUCER_ESTIMATOR_KEY = "pig.exec.reducer.estimator";
-    private static final String REDUCER_ESTIMATOR_ARG_KEY =  "pig.exec.reducer.estimator.arg";
-    
     /**
      * We will serialize the POStore(s) present in map and reduce in lists in
      * the Hadoop Conf. In the case of Multi stores, we could deduce these from
@@ -776,10 +774,7 @@ public class JobControlCompiler{
      */
     public static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds,
                                         org.apache.hadoop.mapreduce.Job job) throws IOException {
-        PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
-          new InputSizeReducerEstimator() :
-          PigContext.instantiateObjectFromParams(conf,
-                  REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
+        PigReducerEstimator estimator = GuiceInjector.get().getInstance(PigReducerEstimator.class);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
         int numberOfReducers = estimator.estimateNumberOfReducers(conf, lds, job);
