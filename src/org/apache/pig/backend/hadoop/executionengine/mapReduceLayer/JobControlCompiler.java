@@ -47,7 +47,7 @@ import org.apache.hadoop.mapred.JobPriority;
 import org.apache.hadoop.mapred.jobcontrol.Job;
 import org.apache.hadoop.mapred.jobcontrol.JobControl;
 import org.apache.pig.ComparisonFunc;
-import org.apache.pig.GuiceInjector;
+import org.apache.pig.inject.GuiceInjector;
 import org.apache.pig.ExecType;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.PigException;
@@ -95,6 +95,7 @@ import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
+import org.apache.pig.inject.GuiceInjector;
 import org.apache.pig.tools.pigstats.ScriptState;
 
 
