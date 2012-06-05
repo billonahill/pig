@@ -266,9 +266,9 @@ public class MapReduceLauncher extends Launcher{
 
             // mark the times that the jobs were submitted so it's reflected in job history props
             for (Job job : jc.getWaitingJobs()) {
-                job.getJobConf().set("script.submitted.timestamp",
+                job.getJobConf().set("pig.script.submitted.timestamp",
                                 Long.toString(scriptSubmittedTimestamp));
-                job.getJobConf().set("job.submitted.timestamp",
+                job.getJobConf().set("pig.job.submitted.timestamp",
                                 Long.toString(System.currentTimeMillis()));
             }
 
