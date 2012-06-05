@@ -27,6 +27,7 @@ use Digest::MD5 qw(md5_hex);
 use Util;
 use File::Path;
 use Cwd;
+use Data::Dumper;
 
 use strict;
 use English;
@@ -81,7 +82,7 @@ sub replaceParameters
     $cmd =~ s/:DBNAME:/$testCmd->{'dbdb'}/g;
 #    $cmd =~ s/:LOCALINPATH:/$testCmd->{'localinpathbase'}/g;
 #    $cmd =~ s/:LOCALOUTPATH:/$testCmd->{'localoutpathbase'}/g;
-#    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
+    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
     $cmd =~ s/:BMPATH:/$testCmd->{'benchmarkPath'}/g;
     $cmd =~ s/:TMP:/$testCmd->{'tmpPath'}/g;
     $cmd =~ s/:HDFSTMP:/tmp\/$testCmd->{'runid'}/g;
@@ -598,7 +599,30 @@ sub generateBenchmark
 	# and logs
 	$modifiedTestCmd{'num'} = $testCmd->{'num'} . "_benchmark";
 
-	my $res = $self->runPig(\%modifiedTestCmd, $log, 1);
+        my $res;
+        if (defined $testCmd->{'benchmarkcachepath'} && $testCmd->{'benchmarkcachepath'} ne "") {
+           $modifiedTestCmd{'localpath'} = $testCmd->{'benchmarkcachepath'} . "/";
+           my $statusFile = $modifiedTestCmd{'localpath'} . $modifiedTestCmd{'group'} . "_" . $modifiedTestCmd{'num'} . ".runPigResult";
+           if (open my $in, '<', $statusFile) {
+              {
+                 local $/;  
+                 eval <$in>;
+                 print $log "Using existing benchmark: ". Dumper($res) . "\n";
+              }
+              close $in;
+           }
+        }
+
+        # run pig if we don't already have the benchmark
+	$res = $res || $self->runPig(\%modifiedTestCmd, $log, 1);
+
+        if (defined $testCmd->{'benchmarkcachepath'} && $testCmd->{'benchmarkcachepath'} ne "") {
+           # save runPig result along with the files
+           my $statusFile = $modifiedTestCmd{'localpath'} . $modifiedTestCmd{'group'} . "_" . $modifiedTestCmd{'num'} . ".runPigResult";
+           open my $out, '>', $statusFile or die $!;
+           print {$out} Data::Dumper->Dump([$res], ["res"]), $/;
+           close $out;
+        }
 
         if (!defined $testCmd->{'verify_pig_script'}) {
                 $ENV{'HADOOP_HOME'} = $orighadoophome;
@@ -861,7 +885,7 @@ sub countStores($$)
     # also note that this won't work if you comment out a store
     my @q = split(/\n/, $testCmd->{'pig'});
         for (my $i = 0; $i < @q; $i++) {
-            $count += $q[$i] =~ /store\s+[a-zA-Z][a-zA-Z0-9_]*\s+into/i;
+            $count += $q[$i] =~ /store\s+(\$)?[a-zA-Z][a-zA-Z0-9_]*\s+into/i;
     }
 
     return $count;

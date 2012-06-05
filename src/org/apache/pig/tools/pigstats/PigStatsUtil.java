@@ -163,7 +163,8 @@ public abstract class PigStatsUtil {
             JobControlCompiler jcc, MROperPlan plan) {
         SimplePigStats ps = (SimplePigStats)PigStats.start();
         ps.start(pc, client, jcc, plan);
-        
+
+        ScriptState.get().emitInitialPlanNotification(plan);
         ScriptState.get().emitLaunchStartedNotification(plan.size());
     }
      
@@ -187,7 +188,18 @@ public abstract class PigStatsUtil {
                 ps.getNumberSuccessfulJobs());
         if (display) ps.display();
     }
-    
+
+    /**
+     * Add stats for a new Job, which doesn't yet need to be completed.
+     *
+     * @param job the job being run
+     * @return JobStats for the job
+     */
+    public static JobStats addJobStats(Job job) {
+        SimplePigStats ps = (SimplePigStats)PigStats.get();
+        return ps.addJobStats(job);
+    }
+
     /**
      * Returns an empty PigStats object
      * 

@@ -24,6 +24,58 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2705: outputSchema modification from scripting UDFs (levyjoshua via julien)
+
+PIG-2724: Make Tuple Iterable (jcoveney)
+
+PIG-2733: Add *.patch, *.log, *.orig, *.rej, *.class to gitignore (jcoveney)
+
+PIG-2732: Let's get rid of the deprecated Tuple methods (jcoveney)
+
+PIG-2638: Optimize BinInterSedes treatment of longs (jcoveney)
+
+PIG-2727: PigStorage Source tagging does not need pig.splitCombination to be turned off (prkommireddi via dvryaboy)
+
+PIG-2710: Implement Naive CUBE operator (prasanth_j via dvryaboy)
+
+PIG-2714: Pig documentation on TOP funcation has issues  (daijy)
+
+PIG-2066: Accumulators should be able to early-terminate (jcoveney)
+
+PIG-2600: Better Map support (prkommireddi via jcoveney)
+
+PIG-2711: e2e harness: cache benchmark results between test runs (thw via daijy)
+
+PIG-2702: Make Pig local mode (and tests) faster by working around the hard coded sleep(5000) in hadoop's JobControl (julien)
+
+PIG-2659: add source location of the aliases in the physical plan (julien)
+
+PIG-2547: Easier UDFs: Convenient EvalFunc super-classes (billgraham, dvryaboy)
+
+PIG-2639: Utils.getSchemaFromString should automatically give name to all types, but fails on boolean (jcoveney)
+
+PIG-2696: Enhance Job Stat to print out median map and reduce time (hluu via daijy)
+
+PIG-2583: Add Grunt command to list the statements in cache (xalan via daijy)
+
+PIG-2688: Log the aliases being processed for the current job (ddaniels888 via azaroth)
+
+PIG-2680: TOBAG output schema reporting (andy schlaikjer via jcoveney)
+
+PIG-2685: Fix error in EvalFunc ctor when implementing Algebraic UDF whose return type is parameterized (andy schlaikjer via jcoveney)
+
+PIG-2664: Allow PPNL impls to get more job info during the run (billgraham)
+
+PIG-2663: Expose helpful ScriptState methods (billgraham)
+
+PIG-2660: PPNL notified of plan before it gets executed (billgraham)
+
+PIG-2574: Make reducer estimator plugable (billgraham)
+
+PIG-2677: Add target to build.xml to generate clover summary reports (gates)
+
+PIG-2650: Convenience mock Loader and Storer to simplify unit testing of Pig scripts (julien)
+
 PIG-2257: AvroStorage doesn't recognize schema_file field when JSON isn't used in the constructor (billgraham)
 
 PIG-2587: Compute LogicalPlan signature and store in job conf (billgraham)
@@ -110,17 +162,31 @@ OPTIMIZATIONS
 
 BUG FIXES
 
-PIG-2644: Piggybank's HadoopJobHistoryLoader throws NPE when reading broken history file (herberts via daijy)
+PIG-2508: PIG can unpredictably ignore deprecated Hadoop config options (thw via dvryaboy)
+
+PIG-2691: Duplicate TOKENIZE schema (jay23jack via azaroth)
+
+PIG-2173: piggybank datetime conversion javadocs not properly formatted (hluu via daijy)
+
+PIG-2709: PigAvroRecordReader should specify which file has a problem when throwing IOException (mpercy via daijy)
+
+PIG-2640: Usage message gives wrong information for Pig additional jars (prkommireddi via daijy)
+
+	PIG-2652:  Skew join and order by don't trigger reducer estimation (dvryaboy)
+
+PIG-2616: JobControlCompiler.getInputSizeFromLoader must handle exceptions from LoadFunc.getStatistics (billgraham)
+
+	PIG-2644: Piggybank's HadoopJobHistoryLoader throws NPE when reading broken history file (herberts via daijy)
 
 PIG-2627: Custom partitioner not set when POSplit is involved in Plan (aniket486 via daijy)
 
 PIG-2596: Jython UDF does not handle boolean output (aniket486 via daijy)
 
-PIG-2649: org.apache.pig.parser.ParserValidationException does not expose the cause exception
+	PIG-2649: org.apache.pig.parser.ParserValidationException does not expose the cause exception
 
-PIG-2540: [piggybank] AvroStorage can't read schema on amazon s3 in elastic mapreduce (rjurney via jcoveney)
+	PIG-2540: [piggybank] AvroStorage can't read schema on amazon s3 in elastic mapreduce (rjurney via jcoveney)
 
-PIG-2618: e2e local fails to build
+	PIG-2618: e2e local fails to build
 
 PIG-2608: Typo in PigStorage documentation for source tagging (prkommireddi via daijy)
 
@@ -140,9 +206,9 @@ PIG-2491: Pig docs still mention hadoop-site.xml (daijy)
 
 PIG-2504: Incorrect sample provided for REGEX_EXTRACT (prkommireddi via daijy)
 
-PIG-2502: Make "hcat.bin" configurable in e2e test (daijy)
+	PIG-2502: Make "hcat.bin" configurable in e2e test (daijy)
 
-PIG-2501: Changes needed to contrib/piggybank/java/build.xml in order to build piggybank.jar with Hadoop 0.23
+	PIG-2501: Changes needed to contrib/piggybank/java/build.xml in order to build piggybank.jar with Hadoop 0.23
 (ekoontz via daijy)
 
 PIG-2499: Pig TestGrunt.testShellCommand occasionally fails (tomwhite via daijy)
@@ -161,13 +227,21 @@ PIG-2379: Bug in Schema.getPigSchema(ResourceSchema rSchema) improperly adds two
 
 PIG-2355: ant clean does not clean e2e test build artifacts (daijy)
 
-PIG-2352: e2e test harness' use of environment variables causes unintended effects between tests (gates)
+	PIG-2352: e2e test harness' use of environment variables causes unintended effects between tests (gates)
 
-Release 0.10.0 - Unreleased
+	Release 0.10.0 - Unreleased
 
-INCOMPATIBLE CHANGES
+	INCOMPATIBLE CHANGES
 
-IMPROVEMENTS
+	IMPROVEMENTS
+
+PIG-2664: Allow PPNL impls to get more job info during the run (billgraham)
+
+PIG-2663: Expose helpful ScriptState methods (billgraham)
+
+PIG-2660: PPNL notified of plan before it gets executed (billgraham)
+
+PIG-2574: Make reducer estimator plugable (billgraham)
 
 PIG-2601: Additional document for 0.10 (daijy)
 
@@ -179,7 +253,7 @@ PIG-2589: Additional e2e test for 0.10 new features (daijy)
 
 PIG-2182: Add more append support to DataByteArray (gsingers via daijy)
 
-PIG-438: Handle realiasing of existing Alias (A=B;) (daijy)
+	PIG-438: Handle realiasing of existing Alias (A=B;) (daijy)
 
 PIG-2548: Support for providing parameters to python script (daijy)
 
@@ -306,6 +380,12 @@ PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
+
+PIG-2730: TFileStorage getStatistics incorrectly throws an exception instead of returning null (traviscrawford via daijy)
+
+PIG-2717: Tuple field mangled during flattening (daijy)
+
+PIG-2721: Wrong output generated while loading bags as input (knoguchi via daijy)
 
 PIG-2578: Multiple Store-commands mess up mapred.output.dir. (daijy)
 
@@ -480,6 +560,12 @@ inclusion of test classes (cos via gates)
 Release 0.9.3 - Unreleased
 
 BUG FIXES
+
+PIG-2693: LoadFunc.setLocation should be called before LoadMetadata.getStatistics (billgraham via julien)
+
+PIG-2666: LoadFunc.setLocation() is not called when pig script only has Order By (daijy)
+
+PIG-2671: e2e harness: Reference local test path via :LOCALTESTPATH: (thw via daijy)
 
 PIG-2642: StoreMetadata.storeSchema can't access files in the output directory (Hadoop 0.23) (thw via daijy)
 
