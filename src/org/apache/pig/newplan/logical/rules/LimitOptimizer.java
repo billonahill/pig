@@ -75,8 +75,7 @@ public class LimitOptimizer extends Rule {
 
             // Limit cannot be pushed up
             if (pred instanceof LOCogroup || pred instanceof LOFilter
-                    || pred instanceof LOLoad || pred instanceof LOSplit
-                    || pred instanceof LODistinct || pred instanceof LOJoin) {
+                    || pred instanceof LOSplit || pred instanceof LODistinct || pred instanceof LOJoin) {
                 return false;
             }
 
@@ -121,8 +120,25 @@ public class LimitOptimizer extends Rule {
                 // Get operator before LOForEach
                 Operator prepredecessor = currentPlan.getPredecessors(pred)
                     .get(0);
+                
+                List<Operator> softPrepredecessors=null;
+                // get a clone of softPrepredecessors to avoid ConcurrentModificationException
+                if (currentPlan.getSoftLinkPredecessors(limit)!=null) {
+                    softPrepredecessors=new ArrayList<Operator>(
+                            currentPlan.getSoftLinkPredecessors(limit));
+                }
+                if (softPrepredecessors!=null) {
+                    for (Operator op : softPrepredecessors) {
+                        currentPlan.removeSoftLink(op, limit);
+                    }
+                }
                 currentPlan.removeAndReconnect(limit);
                 currentPlan.insertBetween(prepredecessor, limit, pred);
+                if (softPrepredecessors!=null) {
+                    for (Operator op : softPrepredecessors) {
+                        currentPlan.createSoftLink(op, limit);
+                    }
+                }
             } else if (limit.getLimitPlan() == null) {
                 // TODO selectively enable optimizations for variable limit
                 if (pred instanceof LOCross || pred instanceof LOUnion) {
@@ -156,6 +172,14 @@ public class LimitOptimizer extends Rule {
 
                 // remove the limit
                 currentPlan.removeAndReconnect(limit);
+            } else if (pred instanceof LOLoad) {
+                // Push limit to load
+                LOLoad load = (LOLoad) pred;
+                if (load.getLimit() == -1)
+                    load.setLimit(limit.getLimit());
+                else
+                    load.setLimit(load.getLimit() < limit.getLimit() ? load
+                            .getLimit() : limit.getLimit());
             } else if (pred instanceof LOLimit) {
                 // Limit is merged into another LOLimit
                 LOLimit beforeLimit = (LOLimit) pred;

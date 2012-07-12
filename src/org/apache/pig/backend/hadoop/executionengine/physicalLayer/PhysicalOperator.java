@@ -17,26 +17,29 @@
  */
 package org.apache.pig.backend.hadoop.executionengine.physicalLayer;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
 import org.apache.pig.impl.plan.Operator;
 import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.VisitorException;
-import org.apache.pig.pen.util.LineageTracer;
-import org.apache.pig.pen.Illustrator;
+import org.apache.pig.parser.SourceLocation;
 import org.apache.pig.pen.Illustrable;
+import org.apache.pig.pen.Illustrator;
+import org.apache.pig.pen.util.LineageTracer;
 
 /**
  *
@@ -137,6 +140,8 @@ public abstract class PhysicalOperator extends Operator<PhyPlanVisitor> implemen
     private boolean accum;
     private transient boolean accumStart;
 
+    private List<OriginalLocation> originalLocations =  new ArrayList<OriginalLocation>();
+
     public PhysicalOperator(OperatorKey k) {
         this(k, -1, null);
     }
@@ -185,8 +190,18 @@ public abstract class PhysicalOperator extends Operator<PhyPlanVisitor> implemen
         return (alias == null) ? "" : (alias + ": ");
     }
 
-    public void setAlias(String alias) {
+    public void addOriginalLocation(String alias, SourceLocation sourceLocation) {
         this.alias = alias;
+        this.originalLocations.add(new OriginalLocation(alias, sourceLocation.line(), sourceLocation.offset()));
+    }
+
+    public void addOriginalLocation(String alias, List<OriginalLocation> originalLocations) {
+        this.alias = alias;
+        this.originalLocations.addAll(originalLocations);
+    }
+
+    public List<OriginalLocation> getOriginalLocations() {
+        return Collections.unmodifiableList(originalLocations);
     }
 
     public void setAccumulative() {
@@ -441,6 +456,7 @@ public abstract class PhysicalOperator extends Operator<PhyPlanVisitor> implemen
 
     protected void cloneHelper(PhysicalOperator op) {
         resultType = op.resultType;
+        originalLocations.addAll(op.originalLocations);
     }
 
     /**
@@ -462,4 +478,33 @@ public abstract class PhysicalOperator extends Operator<PhyPlanVisitor> implemen
     	return pigLogger;
     }
 
+    public static class OriginalLocation implements Serializable {
+        private String alias;
+        private int line;
+        private int offset;
+
+        public OriginalLocation(String alias, int line, int offset) {
+            super();
+            this.alias = alias;
+            this.line = line;
+            this.offset = offset;
+}
+
+        public String getAlias() {
+            return alias;
+        }
+
+        public int getLine() {
+            return line;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+
+        @Override
+        public String toString() {
+            return alias+"["+line+","+offset+"]";
+        }
+    }
 }

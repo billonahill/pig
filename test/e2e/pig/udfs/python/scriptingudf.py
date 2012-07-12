@@ -15,6 +15,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import sys
+sys.path.append("./libexec/python")
+import stringutil
+
 from org.apache.hadoop.fs import Path # Test for PIG-1824
 p = Path('foo')
 
@@ -69,3 +74,25 @@ def count(bag):
     for r in bag:
         cnt += 1
     return cnt
+
+@outputSchema("gpa:double")
+def adjustgpa(gpa, instate):
+    if instate == None:
+        return None
+    elif instate:
+        return gpa
+    else:
+        return gpa+1
+
+@outputSchema("retired:boolean")
+def isretired(age):
+    if age == None:
+        return None
+    elif age>=60:
+        return True
+    else:
+        return False
+
+outputSchema("words:{(word:chararray)}")
+def tokenize(sentence):
+    return stringutil.tokenize(sentence)

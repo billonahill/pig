@@ -19,6 +19,7 @@ package org.apache.pig.data;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 
 import org.apache.pig.classification.InterfaceAudience;
 import org.apache.pig.classification.InterfaceStability;
@@ -139,19 +140,38 @@ public class DataByteArray implements Comparable, Serializable {
      * @param b byte array who's contents to append.  The contents of the byte array are
      * copied.
      */
-    public void append(DataByteArray b) {
+    public DataByteArray append(DataByteArray b) {
 
         byte[] ba = (b == null) ?  null : b.get();
+        return append(ba, 0, ba == null ? 0 : ba.length);
+
+    }
+
+    public DataByteArray append(byte [] ba){
+      return append(ba, 0, ba.length);
+    }
+
+    public DataByteArray append(byte [] ba, int start, int baLength){
         int mDataLength = (mData == null) ? 0 : mData.length;
-        int baLength = (ba == null) ? 0 : ba.length;
-        
+
         int totalSize = mDataLength + baLength;
         if(totalSize == 0) {
-            return;
+            return this;
         }
         byte[] oldData = mData == null ? new byte[0] : mData.clone();
         System.arraycopy(oldData, 0, mData = new byte[totalSize], 0, mDataLength);
-        System.arraycopy(ba, 0, mData, mDataLength, baLength);
+        System.arraycopy(ba, start, mData, mDataLength, baLength);
+        return this;
+    }
+
+    public DataByteArray append(String str){
+      try {
+        return append(str.getBytes("UTF8"));
+      } catch (UnsupportedEncodingException e) {
+        e.printStackTrace();
+      }
+      //TODO: better error here
+      throw new RuntimeException("Unable to append str: " + str);
     }
 
     /**
@@ -210,13 +230,11 @@ public class DataByteArray implements Comparable, Serializable {
 
     @Override
     public int hashCode() {
-        int hash = 1;
-        for (int i = 0; i < mData.length; i++) {
-            // 29 chosen because hash uses 31 and bag 37, and a I want a
-            // prime.
-            hash = 29 * hash + mData[i];
+        return hashCode(mData);
         }
-        return hash;
+
+    public static int hashCode(byte[] buf) {
+        return Arrays.hashCode(buf);
     }
 
 }

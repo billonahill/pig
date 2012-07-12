@@ -69,7 +69,6 @@ import org.apache.pig.newplan.DependencyOrderWalker;
 import org.apache.pig.newplan.Operator;
 import org.apache.pig.newplan.OperatorPlan;
 import org.apache.pig.newplan.PlanWalker;
-import org.apache.pig.newplan.logical.Util;
 import org.apache.pig.newplan.logical.relational.LOGenerate;
 import org.apache.pig.newplan.logical.relational.LOInnerLoad;
 import org.apache.pig.newplan.logical.relational.LogicalRelationalOperator;
@@ -287,7 +286,7 @@ public class ExpToPhyTranslationVisitor extends LogicalExpressionVisitor {
                 nodeGen.getNextNodeId(DEFAULT_SCOPE)));
         ((POMapLookUp)physOp).setLookUpKey(op.getLookupKey() );
         physOp.setResultType(op.getType());
-        physOp.setAlias(op.getFieldSchema().alias);
+        physOp.addOriginalLocation(op.getFieldSchema().alias, op.getLocation());
         currentPlan.add(physOp);
 
         logToPhyMap.put(op, physOp);
@@ -537,6 +536,7 @@ public class ExpToPhyTranslationVisitor extends LogicalExpressionVisitor {
             Operator refOp = ((ScalarExpression)op).getImplicitReferencedOperator();
             ((POUserFunc)p).setReferencedOperator( logToPhyMap.get( refOp ) );
         }
+
     }
     
     @Override

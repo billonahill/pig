@@ -26,22 +26,22 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapReduce;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
 import org.apache.pig.data.AccumulativeBag;
 import org.apache.pig.data.BagFactory;
-import org.apache.pig.data.InternalCachedBag;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataType;
+import org.apache.pig.data.InternalCachedBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.io.NullableTuple;
 import org.apache.pig.impl.io.PigNullableWritable;
-import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.NodeIdGenerator;
-import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapReduce;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
+import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.VisitorException;
 import org.apache.pig.impl.util.IdentityHashSet;
 import org.apache.pig.impl.util.Pair;
@@ -80,6 +80,8 @@ public class POPackage extends PhysicalOperator {
     
     // marker to indicate if key is a tuple
     protected boolean isKeyTuple = false;
+    // marker to indicate if the tuple key is compound in nature
+    protected boolean isKeyCompound = false;
     // key as a Tuple object (if the key is a tuple)
     protected Tuple keyAsTuple;
     
@@ -263,7 +265,7 @@ public class POPackage extends PhysicalOperator {
                 while (tupIter.hasNext()) {
                     NullableTuple ntup = tupIter.next();
                     int index = ntup.getIndex();
-                    Tuple copy = getValueTuple(ntup, index);  
+                    Tuple copy = getValueTuple(ntup, index);
                     
                     if (numInputs == 1) {
                         
@@ -320,8 +322,10 @@ public class POPackage extends PhysicalOperator {
         // in the "key" (look in POLocalRearrange for more comments)
         // If this is the case we need to stitch
         // the "value" together.        
-        Pair<Boolean, Map<Integer, Integer>> lrKeyInfo = 
-            keyInfo.get(index);           
+        Pair<Boolean, Map<Integer, Integer>> lrKeyInfo = keyInfo.get(index);
+        if (lrKeyInfo == null) {
+            throw new RuntimeException("No keyInfo for index "+index+" in "+keyInfo);
+        }
         boolean isProjectStar = lrKeyInfo.first;
         Map<Integer, Integer> keyLookup = lrKeyInfo.second;
         int keyLookupSize = keyLookup.size();
@@ -344,7 +348,7 @@ public class POPackage extends PhysicalOperator {
                     valIndex++;
                 } else {
                     // the field for this index is in the key
-                    if(isKeyTuple) {
+                    if(isKeyTuple && isKeyCompound) {
                         // the key is a tuple, extract the
                         // field out of the tuple
                         copy.set(i, keyAsTuple.get(keyIndex));
@@ -414,6 +418,13 @@ public class POPackage extends PhysicalOperator {
      */
     public void setKeyTuple(boolean keyTuple) {
         this.isKeyTuple = keyTuple;
+    }
+    
+    /**
+     * @param keyCompound the keyCompound to set
+     */
+    public void setKeyCompound(boolean keyCompound) {
+        this.isKeyCompound = keyCompound;
     }
 
     /**

@@ -20,7 +20,7 @@
 <ivy-module version="2.0" xmlns:m="http://ant.apache.org/ivy/maven"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
-  <info organisation="org.apache.pig" module="${ant.project.name}" revision="${version}">
+  <info organisation="org.apache.pig" module="${name}" revision="${version}">
     <license name="Apache 2.0"/>
     <ivyauthor name="Apache Hadoop Team" url="http://hadoop.apache.org/pig"/>
     <description>Pig</description>
@@ -42,8 +42,11 @@
     <conf name="hadoop23" visibility="private"/>
   </configurations>
   <publications>
-    <!--get the artifact from our module name-->
-    <artifact conf="master"/>
+    <artifact name="pig" conf="master"/>
+    <artifact name="pig" m:classifier="withouthadoop" conf="master"/>
+    <artifact name="pig" m:classifier="withdependencies" conf="master"/>
+    <artifact name="pig" m:classifier="sources" conf="master"/>
+    <artifact name="pig" m:classifier="javadoc" conf="master"/>
   </publications>
   <dependencies>
     <dependency org="checkstyle" name="checkstyle" rev="${checkstyle.version}"
@@ -178,7 +181,7 @@
     <dependency org="net.java.dev.javacc" name="javacc" rev="${javacc.version}"
       conf="compile->master"/>
     <dependency org="junit" name="junit" rev="${junit.version}"
-      conf="test->default"/>
+      conf="compile->master"/>
     <dependency org="com.google.code.p.arat" name="rat-lib" rev="${rats-lib.version}"
       conf="releaseaudit->default"/>
     <dependency org="org.codehaus.jackson" name="jackson-mapper-asl" rev="${jackson.version}"
@@ -189,7 +192,7 @@
     <dependency org="commons-lang" name="commons-lang" rev="${commons-lang.version}"
   	  conf="compile->master"/>
     <dependency org="com.google.guava" name="guava" rev="${guava.version}" conf="compile->master" />
-    <dependency org="org.python" name="jython" rev="${jython.version}" conf="compile->master"/>
+    <dependency org="org.python" name="jython-standalone" rev="${jython.version}" conf="compile->master"/>
     <dependency org="rhino" name="js" rev="${rhino.version}" conf="compile->master"/>
     <dependency org="org.antlr" name="antlr" rev="${antlr.version}" conf="compile->master"/>
     <dependency org="org.antlr" name="antlr-runtime" rev="${antlr.version}" conf="compile->default"/>
@@ -197,6 +200,8 @@
     <dependency org="org.apache.zookeeper" name="zookeeper" rev="${zookeeper.version}" conf="compile->master"/>
     <dependency org="org.jboss.netty" name="netty" rev="3.2.2.Final" conf="compile->master"/>
     <dependency org="dk.brics.automaton" name="automaton" rev="1.11-8" conf="compile->default"/>
+
+    <dependency org="org.jruby" name="jruby-complete" rev="${jruby.version}" conf="compile->master"/>
 
     <dependency org="org.apache.hbase" name="hbase" rev="${hbase.version}" conf="compile->master">
       <artifact name="hbase" type="jar"/>
@@ -229,5 +234,11 @@
     <dependency org="org.vafer" name="jdeb" rev="${jdeb.version}"
       conf="compile->master">
     </dependency>
+    
+    <dependency org="org.mockito" name="mockito-all" rev="${mockito.version}" conf="compile->default"/>
+
+    <dependency org="org.spark-project" name="spark-core_2.9.1" rev="0.5.1-SNAPSHOT" conf="compile"/>
+    <dependency org="org.scala-lang" name="scala-library" rev="2.9.1" conf="compile"/>
+
     </dependencies>
 </ivy-module>

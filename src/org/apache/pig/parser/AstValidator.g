@@ -100,12 +100,26 @@ query : ^( QUERY statement* )
 
 statement : general_statement
           | split_statement
+          | realias_statement
+          | rel_cache_statement
 ;
 
 split_statement : split_clause
 ;
 
+realias_statement : realias_clause
+;
+
+rel_cache_statement: rel_cache_clause
+;
+
 general_statement : ^( STATEMENT ( alias { aliases.add( $alias.name ); } )? op_clause parallel_clause? )
+;
+
+realias_clause : ^(REALIAS alias IDENTIFIER)
+   {
+       aliases.add( $alias.name );
+   }
 ;
 
 parallel_clause : ^( PARALLEL INTEGER )
@@ -135,6 +149,7 @@ op_clause : define_clause
           | mr_clause
           | split_clause
           | foreach_clause
+          | cube_clause
 ;
 
 define_clause : ^( DEFINE alias ( cmd | func_clause ) )
@@ -245,6 +260,22 @@ func_args_string : QUOTEDSTRING | MULTILINE_QUOTEDSTRING
 func_args : func_args_string+
 ;
 
+cube_clause
+  : ^( CUBE cube_item )
+;
+
+cube_item
+  : rel ( cube_by_clause )
+;
+
+cube_by_clause
+    : ^( BY cube_by_expr+ )
+;
+
+cube_by_expr 
+    : col_range | expr | STAR 
+;
+
 group_clause
 scope {
     int arity;
@@ -293,6 +324,7 @@ cond : ^( OR cond cond )
      | ^( NULL expr NOT? )
      | ^( rel_op expr expr )
      | func_eval
+     | ^( BOOL_COND expr )     
 ;
 
 func_eval: ^( FUNC_EVAL func_name real_arg* )
@@ -335,7 +367,7 @@ dot_proj : ^( PERIOD col_alias_or_index+ )
 col_alias_or_index : col_alias | col_index
 ;
 
-col_alias : GROUP | IDENTIFIER
+col_alias : GROUP | CUBE | IDENTIFIER
 ;
 
 col_index : DOLLARVAR
@@ -352,6 +384,9 @@ bin_expr : ^( BIN_EXPR cond expr expr )
 ;
 
 limit_clause : ^( LIMIT rel ( INTEGER | LONGINTEGER | expr ) )
+;
+
+rel_cache_clause : ^( CACHE IDENTIFIER)
 ;
 
 sample_clause : ^( SAMPLE rel ( DOUBLENUMBER | expr ) )
@@ -513,7 +548,7 @@ split_otherwise 	: ^( OTHERWISE alias )
 col_ref : alias_col_ref | dollar_col_ref
 ;
 
-alias_col_ref : GROUP | IDENTIFIER
+alias_col_ref : GROUP | CUBE | IDENTIFIER
 ;
 
 dollar_col_ref : DOLLARVAR
@@ -554,6 +589,7 @@ eid : rel_str_op
     | LOAD
     | FILTER
     | FOREACH
+    | CUBE
     | MATCHES
     | ORDER
     | DISTINCT

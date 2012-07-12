@@ -62,6 +62,8 @@ public class POLoad extends PhysicalOperator {
     // Alias for the POLoad
     private String signature;
     
+    private long limit=-1;
+    
     public POLoad(OperatorKey k) {
         this(k,-1, null);
     }
@@ -194,6 +196,10 @@ public class POLoad extends PhysicalOperator {
     }
     
     public LoadFunc getLoadFunc(){
+        if (this.loader==null) {
+            this.loader = (LoadFunc)PigContext.instantiateFuncFromSpec(lFile.getFuncSpec());
+            this.loader.setUDFContextSignature(signature);
+        }
         return this.loader;
     }
     
@@ -228,5 +234,13 @@ public class POLoad extends PhysicalOperator {
               return (Tuple) out;
         } else
           return (Tuple) out;
+    }
+
+    public long getLimit() {
+        return limit;
+    }
+
+    public void setLimit(long limit) {
+        this.limit = limit;
     }
 }

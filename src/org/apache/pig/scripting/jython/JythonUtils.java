@@ -30,6 +30,7 @@ import org.apache.pig.data.DefaultBagFactory;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.python.core.Py;
+import org.python.core.PyBoolean;
 import org.python.core.PyDictionary;
 import org.python.core.PyFloat;
 import org.python.core.PyInteger;
@@ -62,10 +63,17 @@ public class JythonUtils {
             } else if (pyObject instanceof PyList) {
                 DataBag list = bagFactory.newDefaultBag();
                 for (PyObject bagTuple : ((PyList) pyObject).asIterable()) {
-                    // In jython, list need not be a bag of tuples, as it is in case of pig
-                    // So we fail with cast exception if we dont find tuples inside bag
-                    // This is consistent with java udf (bag should be filled with tuples)
-                    list.add((Tuple) pythonToPig(bagTuple));
+                    // If the item of the array is not a tuple, 
+                    // wrap it into tuple before adding to bag
+                    Object pigBagItem = pythonToPig(bagTuple);
+                    Tuple pigBagTuple;
+                    if (!(pigBagItem instanceof Tuple)) {
+                        pigBagTuple = TupleFactory.getInstance().newTuple(1);
+                        pigBagTuple.set(0, pigBagItem);
+                    } else {
+                        pigBagTuple = (Tuple)pigBagItem;
+                    }
+                    list.add(pigBagTuple);
                 }
                 javaObj = list;
             } else if (pyObject instanceof PyDictionary) {
@@ -82,6 +90,8 @@ public class JythonUtils {
                 javaObj = newMap;
             } else if (pyObject instanceof PyLong) {
                 javaObj = pyObject.__tojava__(Long.class);
+            } else if (pyObject instanceof PyBoolean) {
+            	javaObj = pyObject.__tojava__(Boolean.class);
             } else if (pyObject instanceof PyInteger) {
                 javaObj = pyObject.__tojava__(Integer.class);
             } else if (pyObject instanceof PyFloat) {

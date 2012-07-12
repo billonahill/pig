@@ -84,15 +84,22 @@ query : ^( QUERY statement* )
 
 statement : general_statement
           | split_statement
+          | realias_statement
 ;
 
 split_statement : split_clause
+;
+
+realias_statement : realias_clause
 ;
 
 // For foreach statement that with complex inner plan.
 general_statement 
     : ^( STATEMENT ( alias )? 
         op_clause parallel_clause? ) 
+;
+
+realias_clause : ^(REALIAS alias IDENTIFIER)
 ;
 
 parallel_clause 
@@ -123,6 +130,7 @@ op_clause : define_clause
           | mr_clause
           | split_clause
           | foreach_clause
+          | cube_clause
 ;
 
 define_clause 
@@ -229,6 +237,22 @@ func_args
     : QUOTEDSTRING+ 
 ;
 
+cube_clause
+  : ^( CUBE cube_item )
+;
+
+cube_item
+  : rel ( cube_by_clause )
+;
+
+cube_by_clause
+    : ^( BY cube_by_expr+ )
+;
+
+cube_by_expr 
+    : col_range | expr | STAR 
+;
+
 group_clause
     : ^( ( GROUP | COGROUP ) group_item+ group_type? partition_clause? )
 ;
@@ -273,6 +297,7 @@ cond
     | ^( NULL expr NOT? )
     | ^( rel_op expr expr )
     | func_eval
+    | ^( BOOL_COND expr )
 ;
 
 func_eval
@@ -326,6 +351,7 @@ col_alias_or_index : col_alias | col_index
 
 col_alias 
     : GROUP 
+    | CUBE 
     | IDENTIFIER
 ;
 
@@ -500,6 +526,7 @@ col_ref : alias_col_ref | dollar_col_ref
 
 alias_col_ref 
     : GROUP 
+    | CUBE
     | IDENTIFIER
       {
           String alias = $IDENTIFIER.text;
@@ -563,6 +590,7 @@ eid : rel_str_op
     | LOAD
     | FILTER
     | FOREACH
+    | CUBE
     | MATCHES
     | ORDER
     | DISTINCT
