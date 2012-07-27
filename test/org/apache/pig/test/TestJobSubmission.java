@@ -477,15 +477,17 @@ public class TestJobSubmission {
         int parallel = job.getJobConf().getNumReduceTasks();
 
         assertTrue(parallel==100);
+        assertEquals(job.getJobConf().getLong("pig.info.reducers.default.parallel", -1), pc.defaultParallel);
         
         pc.defaultParallel = -1;        
     }
     
     @Test
     public void testDefaultParallelInSort() throws Throwable {
-        pc.defaultParallel = 100;
-        
-        String query = "a = load 'input';" + "b = order a by $0;" + "store b into 'output';";
+        // default_parallel is considered only at runtime, so here we only test requested parallel
+        // more thorough tests can be found in TestNumberOfReducers.java
+
+        String query = "a = load 'input';" + "b = order a by $0 parallel 100;" + "store b into 'output';";
         PigServer ps = new PigServer(ExecType.MAPREDUCE, cluster.getProperties());
         PhysicalPlan pp = Util.buildPp(ps, query);
         MROperPlan mrPlan = Util.buildMRPlan(pp, pc);
@@ -507,11 +509,11 @@ public class TestJobSubmission {
     
     @Test
     public void testDefaultParallelInSkewJoin() throws Throwable {
-        pc.defaultParallel = 100;
-        
+        // default_parallel is considered only at runtime, so here we only test requested parallel
+        // more thorough tests can be found in TestNumberOfReducers.java
         String query = "a = load 'input';" + 
                        "b = load 'input';" + 
-                       "c = join a by $0, b by $0 using 'skewed';" +
+                       "c = join a by $0, b by $0 using 'skewed' parallel 100;" +
                        "store c into 'output';";
         PigServer ps = new PigServer(ExecType.MAPREDUCE, cluster.getProperties());
         PhysicalPlan pp = Util.buildPp(ps, query);
@@ -559,6 +561,7 @@ public class TestJobSubmission {
         Job job = jc.getWaitingJobs().get(0);
         long reducer=Math.min((long)Math.ceil(new File("test/org/apache/pig/test/data/passwd").length()/100.0), 10);
         assertEquals(job.getJobConf().getLong("mapred.reduce.tasks",10), reducer);
+        assertEquals(job.getJobConf().getLong("pig.info.reducers.estimated.parallel", -1), reducer);
         
         // use the PARALLEL key word, it will override the estimated reducer number
         query = "a = load '/passwd';" +
@@ -575,6 +578,7 @@ public class TestJobSubmission {
         jc=jcc.compile(mrPlan, "Test");
         job = jc.getWaitingJobs().get(0);
         assertEquals(job.getJobConf().getLong("mapred.reduce.tasks",10), 2);
+        assertEquals(job.getJobConf().getLong("pig.info.reducers.requested.parallel", -1), 2);
         
         final byte[] COLUMNFAMILY = Bytes.toBytes("pig");
         HTable table = util.createTable(Bytes.toBytesBinary("passwd"),
@@ -659,7 +663,9 @@ public class TestJobSubmission {
         
         sort = mrPlan.getLeaves().get(0);
         
-        assertEquals(1, sort.getRequestedParallelism());
+        // the requested parallel will be -1 if users don't set any of default_parallel, paralllel
+        // and the estimation doesn't take effect. MR framework will finally set it to 1.
+        assertEquals(-1, sort.getRequestedParallelism());
         
         // test order by with three jobs (after optimization)
         query = "a = load '/passwd';" +
