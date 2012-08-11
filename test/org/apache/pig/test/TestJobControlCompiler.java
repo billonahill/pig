@@ -48,6 +48,7 @@ import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.jobcontrol.JobControl;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.ExecType;
 import org.apache.pig.FuncSpec;
 import org.apache.pig.LoadFunc;
@@ -134,20 +135,20 @@ public class TestJobControlCompiler {
 
     @Test
     public void testEstimateNumberOfReducers() throws Exception {
-        Assert.assertEquals(2, JobControlCompiler.estimateNumberOfReducers(CONF,
-                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 999,
-                        new PigStorage())),
-                new org.apache.hadoop.mapreduce.Job(CONF)));
+        Assert.assertEquals(2, JobControlCompiler.estimateNumberOfReducers(
+                new Job(CONF),
+                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 999, new PigStorage())),
+                null));
 
-        Assert.assertEquals(2, JobControlCompiler.estimateNumberOfReducers(CONF,
-                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 1000,
-                        new PigStorage())),
-                new org.apache.hadoop.mapreduce.Job(CONF)));
+        Assert.assertEquals(2, JobControlCompiler.estimateNumberOfReducers(
+                new Job(CONF),
+                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 1000, new PigStorage())),
+                null));
 
-        Assert.assertEquals(3, JobControlCompiler.estimateNumberOfReducers(CONF,
-                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 1001,
-                        new PigStorage())),
-                new org.apache.hadoop.mapreduce.Job(CONF)));
+        Assert.assertEquals(3, JobControlCompiler.estimateNumberOfReducers(
+                new Job(CONF),
+                Lists.newArrayList(createPOLoadWithSize(2L * 1000 * 1000 * 1001, new PigStorage())),
+                null));
     }
 
     public static POLoad createPOLoadWithSize(long size, LoadFunc loadFunc) throws Exception {

@@ -46,12 +46,12 @@ public interface PigReducerEstimator {
      * Estimate the number of reducers for a given job based on the collection
      * of load funcs passed.
      *
-     * @param conf the job configuration
-     * @param poLoadList list of POLoads used in the jobs physical plan
      * @param job job instance
+     * @param poLoadList list of POLoads used in the jobs physical plan
+     * @param mapReduceOper map reducer operator of the job
      * @return the number of reducers to use, or -1 if the count couldn't be estimated
      * @throws IOException
      */
-    public int estimateNumberOfReducers(Configuration conf, List<POLoad> poLoadList, Job job)
-        throws IOException;
+    public int estimateNumberOfReducers(Job job, List<POLoad> poLoadList,
+                                        MapReduceOper mapReduceOper) throws IOException;
 }

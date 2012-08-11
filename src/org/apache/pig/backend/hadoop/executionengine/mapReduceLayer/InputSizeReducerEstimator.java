@@ -64,13 +64,15 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
     /**
      * Determines the number of reducers to be used.
      *
-     * @param conf the job configuration
      * @param lds list of POLoads used in the jobs physical plan
      * @param job job instance
+     * @param mapReduceOper
      * @throws java.io.IOException
      */
     @Override
-    public int estimateNumberOfReducers(Configuration conf, List<POLoad> lds, Job job) throws IOException {
+    public int estimateNumberOfReducers(Job job, List<POLoad> lds, MapReduceOper mapReduceOper) throws IOException {
+        Configuration conf = job.getConfiguration();
+
         long bytesPerReducer = conf.getLong(BYTES_PER_REDUCER_PARAM, DEFAULT_BYTES_PER_REDUCER);
         int maxReducers = conf.getInt(MAX_REDUCER_COUNT_PARAM, DEFAULT_MAX_REDUCER_COUNT_PARAM);
         long totalInputFileSize = getTotalInputFileSize(conf, lds, job);
