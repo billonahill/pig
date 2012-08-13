@@ -812,7 +812,6 @@ public class JobControlCompiler{
         if (mro.runtimeParallelism != -1) {
             return mro.runtimeParallelism;
         }
-        List<POLoad> lds = PlanHelper.getPhysicalOperators(mro.mapPlan, POLoad.class);
 
         int jobParallelism = -1;
 
@@ -821,7 +820,7 @@ public class JobControlCompiler{
         } else if (pigContext.defaultParallel > 0) {
             jobParallelism = pigContext.defaultParallel;
         } else {
-            mro.estimatedParallelism = estimateNumberOfReducers(nwJob, lds, mro);
+            mro.estimatedParallelism = estimateNumberOfReducers(nwJob, mro);
             // reducer estimation could return -1 if it couldn't estimate
             log.info("Could not estimate number of reducers and no requested or default " +
                      "parallelism set. Defaulting to 1 reducer.");
@@ -832,16 +831,15 @@ public class JobControlCompiler{
         mro.runtimeParallelism = jobParallelism;
         return jobParallelism;
     }
+
     /**
      * Looks up the estimator from REDUCER_ESTIMATOR_KEY and invokes it to find the number of
      * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputSizeReducerEstimator.
      * @param job
-     * @param poLoads
      * @param mapReducerOper
      * @throws IOException
      */
     public static int estimateNumberOfReducers(org.apache.hadoop.mapreduce.Job job,
-                                               List<POLoad> poLoads,
                                                MapReduceOper mapReducerOper) throws IOException {
         Configuration conf = job.getConfiguration();
 
@@ -851,7 +849,7 @@ public class JobControlCompiler{
                   REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
-        int numberOfReducers = estimator.estimateNumberOfReducers(job, poLoads, mapReducerOper);
+        int numberOfReducers = estimator.estimateNumberOfReducers(job, mapReducerOper);
         return numberOfReducers;
     }
 
