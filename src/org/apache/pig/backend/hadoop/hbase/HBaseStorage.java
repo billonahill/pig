@@ -390,8 +390,15 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         }
         if (configuredOptions_.hasOption("lte")) {
             lte_ = Bytes.toBytesBinary(Utils.slashisize(configuredOptions_.getOptionValue("lte")));
-            // we can't set stop row here since that call is exclusive
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(String.format("Incrementing lte value of %s from bytes %s to %s to set stop row",
+                          Bytes.toString(lte_), toString(lte_), toString(increment(lte_))));
+            }
+
+            // The WhileMatchFilter will short-circuit the scan after we no longer match. The
+            // setStopRow call will limit the number of regions we need to scan
             addFilter(new WhileMatchFilter(new RowFilter(CompareOp.LESS_OR_EQUAL, new BinaryComparator(lte_))));
+            scan.setStopRow(increment(lte_));
         }
         if (configuredOptions_.hasOption("minTimestamp") || configuredOptions_.hasOption("maxTimestamp")){
             scan.setTimeRange(minTimestamp_, maxTimestamp_);
@@ -401,7 +408,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         }
 
         // if the group of columnInfos for this family doesn't contain a prefix, we don't need
-        // to set any filters, we can just call addColumn or addFamily
+        // to set any filters, we can just call addColumn or addFamily. See javadocs below.
         boolean columnPrefixExists = false;
         for (ColumnInfo columnInfo : columnInfo_) {
             if (columnInfo.getColumnPrefix() != null) {
@@ -410,93 +417,104 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             }
         }
 
-        /**
-         *  Don't set filters here unless we have a qualifier with a prefix and a wildcard
-         *  (i.e. cf:foo*). In that case we need a filter on every possible column to be returned like
-         *  what's shown below. This will become very inneficient for long lists of columns mixed
-         *  with a prefixed wildcard.
-         *
-         *  FilterList - must pass all
-         *   - FamilyFilter
-         *   - and the must pass ONE FilterList of
-         *    - either Qualifier
-         *    - or ColumnPrefixFilter
-         *
-         *  If we have only column family filters (i.e. cf:*) or explicit column descriptors
-         *  (i.e., cf:foo) or a mix of both then we don't need filters, since the scan will take
-         *  care of that.
-         */
         if (!columnPrefixExists) {
-            for (ColumnInfo columnInfo : columnInfo_) {
-                if (columnInfo.columnName != null) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Adding column to scan via addColumn with cf:name = " +
-                                Bytes.toString(columnInfo.getColumnFamily()) + ":" +
-                                Bytes.toString(columnInfo.getColumnName()));
-                    }
-                    scan.addColumn(columnInfo.getColumnFamily(), columnInfo.getColumnName());
-                }
-                else {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Adding column family to scan via addFamily with cf:name = " +
-                                Bytes.toString(columnInfo.getColumnFamily()));
-                    }
-                    scan.addFamily(columnInfo.getColumnFamily());
-                }
-            }
+            addFiltersWithoutColumnPrefix(columnInfo_);
         }
         else {
-            // we need to apply a CF AND column list filter for each family
-            FilterList allColumnFilters = null;
-            Map<String, List<ColumnInfo>> groupedMap = groupByFamily(columnInfo_);
-            for (String cfString : groupedMap.keySet()) {
-                List<ColumnInfo> columnInfoList = groupedMap.get(cfString);
-                byte[] cf = Bytes.toBytes(cfString);
+            addFiltersWithColumnPrefix(columnInfo_);
+        }
+    }
 
-                // all filters roll up to one parent OR filter
-                if (allColumnFilters == null) {
-                    allColumnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+    /**
+     * If there is no column with a prefix, we don't need filters, we can just call addColumn and
+     * addFamily on the scan
+     */
+    private void addFiltersWithoutColumnPrefix(List<ColumnInfo> columnInfos) {
+        for (ColumnInfo columnInfo : columnInfos) {
+            if (columnInfo.columnName != null) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Adding column to scan via addColumn with cf:name = " +
+                            Bytes.toString(columnInfo.getColumnFamily()) + ":" +
+                            Bytes.toString(columnInfo.getColumnName()));
                 }
+                scan.addColumn(columnInfo.getColumnFamily(), columnInfo.getColumnName());
+            }
+            else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Adding column family to scan via addFamily with cf:name = " +
+                            Bytes.toString(columnInfo.getColumnFamily()));
+                }
+                scan.addFamily(columnInfo.getColumnFamily());
+            }
+        }
+    }
 
-                // each group contains a column family filter AND (all) and an OR (one of) of
-                // the column filters
-                FilterList thisColumnGroupFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-                thisColumnGroupFilter.addFilter(new FamilyFilter(CompareOp.EQUAL, new BinaryComparator(cf)));
-                FilterList columnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
-                for (ColumnInfo colInfo : columnInfoList) {
-                    if (colInfo.isColumnMap()) {
+    /**
+     *  If we have a qualifier with a prefix and a wildcard (i.e. cf:foo*), we need a filter on every
+     *  possible column to be returned as shown below. This will become very inneficient for long
+     *  lists of columns mixed with a prefixed wildcard.
+     *
+     *  FilterList - must pass ALL of
+     *   - FamilyFilter
+     *   - AND a must pass ONE FilterList of
+     *    - either Qualifier
+     *    - or ColumnPrefixFilter
+     *
+     *  If we have only column family filters (i.e. cf:*) or explicit column descriptors
+     *  (i.e., cf:foo) or a mix of both then we don't need filters, since the scan will take
+     *  care of that.
+     */
+    private void addFiltersWithColumnPrefix(List<ColumnInfo> columnInfos) {
+        // we need to apply a CF AND column list filter for each family
+        FilterList allColumnFilters = null;
+        Map<String, List<ColumnInfo>> groupedMap = groupByFamily(columnInfos);
+        for (String cfString : groupedMap.keySet()) {
+            List<ColumnInfo> columnInfoList = groupedMap.get(cfString);
+            byte[] cf = Bytes.toBytes(cfString);
 
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Adding family:prefix filters with values " +
-                                    Bytes.toString(colInfo.getColumnFamily()) + COLON +
-                                    Bytes.toString(colInfo.getColumnPrefix()));
-                        }
+            // all filters roll up to one parent OR filter
+            if (allColumnFilters == null) {
+                allColumnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+            }
 
-                        // add a PrefixFilter to the list of column filters
-                        if (colInfo.getColumnPrefix() != null) {
-                            columnFilters.addFilter(new ColumnPrefixFilter(
-                                colInfo.getColumnPrefix()));
-                        }
+            // each group contains a column family filter AND (all) and an OR (one of) of
+            // the column filters
+            FilterList thisColumnGroupFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+            thisColumnGroupFilter.addFilter(new FamilyFilter(CompareOp.EQUAL, new BinaryComparator(cf)));
+            FilterList columnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+            for (ColumnInfo colInfo : columnInfoList) {
+                if (colInfo.isColumnMap()) {
+
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Adding family:prefix filters with values " +
+                                Bytes.toString(colInfo.getColumnFamily()) + COLON +
+                                Bytes.toString(colInfo.getColumnPrefix()));
                     }
-                    else {
 
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Adding family:descriptor filters with values " +
-                                    Bytes.toString(colInfo.getColumnFamily()) + COLON +
-                                    Bytes.toString(colInfo.getColumnName()));
-                        }
-
-                        // add a QualifierFilter to the list of column filters
-                        columnFilters.addFilter(new QualifierFilter(CompareOp.EQUAL,
-                                new BinaryComparator(colInfo.getColumnName())));
+                    // add a PrefixFilter to the list of column filters
+                    if (colInfo.getColumnPrefix() != null) {
+                        columnFilters.addFilter(new ColumnPrefixFilter(
+                            colInfo.getColumnPrefix()));
                     }
                 }
-                thisColumnGroupFilter.addFilter(columnFilters);
-                allColumnFilters.addFilter(thisColumnGroupFilter);
+                else {
+
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Adding family:descriptor filters with values " +
+                                Bytes.toString(colInfo.getColumnFamily()) + COLON +
+                                Bytes.toString(colInfo.getColumnName()));
+                    }
+
+                    // add a QualifierFilter to the list of column filters
+                    columnFilters.addFilter(new QualifierFilter(CompareOp.EQUAL,
+                            new BinaryComparator(colInfo.getColumnName())));
+                }
             }
-            if (allColumnFilters != null) {
-                addFilter(allColumnFilters);
-            }
+            thisColumnGroupFilter.addFilter(columnFilters);
+            allColumnFilters.addFilter(thisColumnGroupFilter);
+        }
+        if (allColumnFilters != null) {
+            addFilter(allColumnFilters);
         }
     }
 
@@ -1108,5 +1126,26 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             groupedMap.put(cf, columnInfoList);
         }
         return groupedMap;
+    }
+
+    private static String toString(byte[] bytes) {
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < bytes.length; i++) {
+            if (i > 0) { sb.append("|"); }
+            sb.append(bytes[i]);
+        }
+        return sb.toString();
+    }
+
+    private static byte[] increment(byte[] bytes) {
+        byte[] incremented = bytes.clone();
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            if (bytes[i] == -1) { continue; }
+            incremented[i] = (byte)(bytes[i] + 1);
+            Arrays.fill(incremented, i + 1, bytes.length, (byte)0);
+            return incremented;
+        }
+        throw new IllegalArgumentException(
+                "Overflow error trying to increment bytes for key: " + Arrays.toString(bytes));
     }
 }
