@@ -397,15 +397,19 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         }
         if (configuredOptions_.hasOption("lte")) {
             lte_ = Bytes.toBytesBinary(Utils.slashisize(configuredOptions_.getOptionValue("lte")));
+            byte[] lt = increment(lte_);
             if (LOG.isDebugEnabled()) {
                 LOG.debug(String.format("Incrementing lte value of %s from bytes %s to %s to set stop row",
-                          Bytes.toString(lte_), toString(lte_), toString(increment(lte_))));
+                          Bytes.toString(lte_), toString(lte_), toString(lt)));
+            }
+
+            if (lt != null) {
+                scan.setStopRow(increment(lte_));
             }
 
             // The WhileMatchFilter will short-circuit the scan after we no longer match. The
             // setStopRow call will limit the number of regions we need to scan
             addFilter(new WhileMatchFilter(new RowFilter(CompareOp.LESS_OR_EQUAL, new BinaryComparator(lte_))));
-            scan.setStopRow(increment(lte_));
         }
         if (configuredOptions_.hasOption("minTimestamp") || configuredOptions_.hasOption("maxTimestamp")){
             scan.setTimeRange(minTimestamp_, maxTimestamp_);
@@ -1136,6 +1140,8 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     }
 
     private static String toString(byte[] bytes) {
+        if (bytes == null) { return null; }
+
         StringBuffer sb = new StringBuffer();
         for (int i = 0; i < bytes.length; i++) {
             if (i > 0) { sb.append("|"); }
@@ -1144,6 +1150,12 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         return sb.toString();
     }
 
+    /**
+     * Increments the byte array by one for use with setting stopRow. If the array can't be incremented
+     * a null will be returned.
+     * @param bytes array to increment bytes on
+     * @return byte array incremented by 1, or null if it can't be incremented.
+     */
     private static byte[] increment(byte[] bytes) {
         byte[] incremented = bytes.clone();
         for (int i = bytes.length - 1; i >= 0; i--) {
@@ -1152,7 +1164,6 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             Arrays.fill(incremented, i + 1, bytes.length, (byte)0);
             return incremented;
         }
-        throw new IllegalArgumentException(
-                "Overflow error trying to increment bytes for key: " + Arrays.toString(bytes));
+        return null;
     }
 }
