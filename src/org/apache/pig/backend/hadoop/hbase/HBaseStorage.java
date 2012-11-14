@@ -1153,7 +1153,10 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     /**
      * Increments the byte array by one for use with setting stopRow. If all bytes in the array are
      * set to the maximum byte value, then the original array will be returned with a 0 byte appended
-     * to it.
+     * to it. This is because HBase compares bytes from left to right. If byte array B is equal to
+     * byte array A, but with an extra byte appended, A will be < B. For example
+     * {@code}A = byte[] {-1}{@code} increments to
+     * {@code}B = byte[] {-1, 0}{@code} and {@code}A < B{@code}
      * @param bytes array to increment bytes on
      * @return a copy of the byte array incremented by 1
      */
