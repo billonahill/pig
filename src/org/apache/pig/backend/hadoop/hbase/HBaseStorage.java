@@ -1139,7 +1139,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         return groupedMap;
     }
 
-    private static String toString(byte[] bytes) {
+    static String toString(byte[] bytes) {
         if (bytes == null) { return null; }
 
         StringBuffer sb = new StringBuffer();
@@ -1151,19 +1151,39 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     }
 
     /**
-     * Increments the byte array by one for use with setting stopRow. If the array can't be incremented
-     * a null will be returned.
+     * Increments the byte array by one for use with setting stopRow. If all bytes in the array are
+     * set to the maximum byte value, then the original array will be returned with a 0 byte appended
+     * to it.
      * @param bytes array to increment bytes on
-     * @return byte array incremented by 1, or null if it can't be incremented.
+     * @return a copy of the byte array incremented by 1
      */
-    static byte[] increment(byte[] bytes) {
-        byte[] incremented = bytes.clone();
-        for (int i = bytes.length - 1; i >= 0; i--) {
-            if (bytes[i] == -1) { continue; }
-            incremented[i] = (byte)(bytes[i] + 1);
-            Arrays.fill(incremented, i + 1, bytes.length, (byte)0);
-            return incremented;
+    static byte[] increment(byte [] bytes) {
+        boolean allAtMax = true;
+        for(int i = 0; i < bytes.length; i++) {
+            if((bytes[bytes.length - i - 1] & 0x0ff) != 255) {
+                allAtMax = false;
+                break;
+            }
         }
-        return null;
+
+        if (allAtMax) {
+            return Arrays.copyOf(bytes, bytes.length + 1);
+        }
+
+        byte[] incremented = bytes.clone();
+        for(int i = bytes.length - 1; i >= 0; i--) {
+            boolean carry = false;
+            int val = bytes[i] & 0x0ff;
+            int total = val + 1;
+            if(total > 255) {
+                carry = true;
+                total %= 256;
+            } else if (total < 0) {
+                carry = true;
+            }
+            incremented[i] = (byte)total;
+            if (!carry) return incremented;
+        }
+        return incremented;
     }
 }
