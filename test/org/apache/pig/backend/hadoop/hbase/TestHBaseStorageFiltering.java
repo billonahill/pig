@@ -173,6 +173,21 @@ public class TestHBaseStorageFiltering {
         assertColumnInfo(cf2List.get(0), "cf2", null, "foo");
     }
 
+    @Test
+    public void testIncrementBytes1() {
+        doIncrementTest("100", "101");
+        doIncrementTest("0001", "0002");
+        doIncrementTest("aaaccccc", "aaaccccd");
+    }
+
+    private void doIncrementTest(String initial, String expected) {
+        byte[] initialBytes = Bytes.toBytes(initial);
+        byte[] incrementedBytes = HBaseStorage.increment(initialBytes);
+        assertEquals(expected, Bytes.toString(incrementedBytes));
+        assertTrue("Initial value of " + initial + " should be < " + Bytes.toString(incrementedBytes),
+                Bytes.compareTo(initialBytes, incrementedBytes) < 0);
+    }
+
     private void assertColumnInfo(HBaseStorage.ColumnInfo columnInfo,
                                   String columnFamily, String columnName, String prefix) {
         assertEquals(columnFamily, Bytes.toString(columnInfo.getColumnFamily()));

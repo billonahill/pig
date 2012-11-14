@@ -1156,7 +1156,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      * @param bytes array to increment bytes on
      * @return byte array incremented by 1, or null if it can't be incremented.
      */
-    private static byte[] increment(byte[] bytes) {
+    static byte[] increment(byte[] bytes) {
         byte[] incremented = bytes.clone();
         for (int i = bytes.length - 1; i >= 0; i--) {
             if (bytes[i] == -1) { continue; }
