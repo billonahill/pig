@@ -174,18 +174,47 @@ public class TestHBaseStorageFiltering {
     }
 
     @Test
-    public void testIncrementBytes1() {
+    public void testIncrementStrings() {
         doIncrementTest("100", "101");
         doIncrementTest("0001", "0002");
         doIncrementTest("aaaccccc", "aaaccccd");
     }
 
+    @Test
+    public void testIncrementBytes() {
+        doIncrementTest(Bytes.toBytes(0x03), Bytes.toBytes(0x04));
+        doIncrementTest(new byte[] {0, 1, 0}, new byte[] {0, 1, 1});
+        doIncrementTest(new byte[] {127}, new byte[] {-128});
+        doIncrementTest(new byte[] {-1}, new byte[] {-1, 0});
+        doIncrementTest(new byte[] {-1, -1}, new byte[] {-1, -1, 0});
+        doIncrementTest(new byte[] {0, -1, -1}, new byte[] {1, 0, 0});
+        doIncrementTest(Bytes.toBytes(0xFFFFFFFF), new byte[] {-1, -1, -1, -1, 0});
+        doIncrementTest(Bytes.toBytes(Long.MAX_VALUE), new byte[] {-128, 0, 0, 0, 0, 0, 0, 0});
+    }
+
     private void doIncrementTest(String initial, String expected) {
         byte[] initialBytes = Bytes.toBytes(initial);
+        byte[] expectedBytes = Bytes.toBytes(expected);
         byte[] incrementedBytes = HBaseStorage.increment(initialBytes);
+        assertTrue(String.format("Expected bytes %s (%s) did not equal found bytes %s (%s)",
+                HBaseStorage.toString(expectedBytes), expected, HBaseStorage.toString(incrementedBytes), Bytes.toString(incrementedBytes)),
+                Bytes.compareTo(expectedBytes, incrementedBytes) == 0);
         assertEquals(expected, Bytes.toString(incrementedBytes));
         assertTrue("Initial value of " + initial + " should be < " + Bytes.toString(incrementedBytes),
                 Bytes.compareTo(initialBytes, incrementedBytes) < 0);
+    }
+
+    private void doIncrementTest(byte[] initial, byte[] expected) {
+        byte[] incrementedBytes = HBaseStorage.increment(initial);
+        if (expected == null) {
+            assertNull("Expected null bytes but found " + HBaseStorage.toString(incrementedBytes), incrementedBytes);
+        } else {
+            assertTrue(String.format("Expected bytes %s did not equal found bytes %s",
+                    HBaseStorage.toString(expected), HBaseStorage.toString(incrementedBytes)),
+                    Bytes.compareTo(expected, incrementedBytes) == 0);
+        }
+        assertTrue("Initial value of should be < incremented value",
+                Bytes.compareTo(initial, incrementedBytes) < 0);
     }
 
     private void assertColumnInfo(HBaseStorage.ColumnInfo columnInfo,
