@@ -24,6 +24,8 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2788: improved string interpolation of variables (jcoveney)
+
 PIG-2362: Rework Ant build.xml to use macrodef instead of antcall (azaroth via cheolsoo)
 
 PIG-2857: Add a -tagPath option to PigStorage (prkommireddi via cheolsoo)
@@ -65,6 +67,16 @@ OPTIMIZATIONS
 PIG-3013: BinInterSedes improve chararray sort performance (rohini)
 
 BUG FIXES
+
+PIG-3029 TestTypeCheckingValidatorNewLP has some path reference issues for cross-platform execution (jgordon via gates)
+
+PIG-3120: setStoreFuncUDFContextSignature called with null signature (jdler via cheolsoo)
+
+PIG-3115: Distinct Build-in Function Doesn't Handle Null Bags (njw45 via daijy)
+
+PIG-2433: Jython import module not working if module path is in classpath (rohini)
+
+PIG-2769 a simple logic causes very long compiling time on pig 0.10.0 (nwhite via gates)
 
 PIG-2251: PIG leaks Zookeeper connections when using HBaseStorage (jamarkha via cheolsoo)
 
