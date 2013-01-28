@@ -19,6 +19,8 @@
 package org.apache.pig.parser;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,7 +100,15 @@ public class LogicalPlanBuilder {
 
     private LogicalPlan plan = new LogicalPlan();
 
-    private Map<String, Operator> operators = new HashMap<String, Operator>();
+    private String lastRel = null;
+
+    private Map<String, Operator> operators = new HashMap<String, Operator>() {
+        @Override
+        public Operator put(String k, Operator v) {
+            lastRel = k;
+            return super.put(k, v);
+        }
+    };
 
     Map<String, String> fileNameMap;
 
@@ -1227,6 +1237,16 @@ public class LogicalPlanBuilder {
         return Long.parseLong( num );
     }
 
+    static BigInteger parseBigInteger(String s) {
+        String num = s.substring( 0, s.length() - 1 );
+        return new BigInteger( num );
+    }
+
+    static BigDecimal parseBigDecimal(String s) {
+        String num = s.substring( 0, s.length() - 1 );
+        return new BigDecimal( num );
+    }
+
     static Tuple buildTuple(List<Object> objList) {
         TupleFactory tf = TupleFactory.getInstance();
         return tf.newTuple( objList );
@@ -1630,5 +1650,12 @@ public class LogicalPlanBuilder {
     void putOperator(String alias, Operator op) {
         operators.put(alias, op);
     }
+
+    public String getLastRel(SourceLocation loc) throws ParserValidationException {
+      if (lastRel == null) {
+          throw new ParserValidationException(intStream, loc, "Asked for last relation -- no relations have been defined");
+      }
+      return lastRel;
+  }
 
 }
