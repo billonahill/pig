@@ -24,6 +24,19 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-3160: GFCross uses unnecessary loop (sandyr via cheolsoo)
+
+PIG-3138: Decouple PigServer.executeBatch() from compilation of batch (pkommireddi via cheolsoo)
+
+PIG-2878: Pig current releases lack a UDF equalIgnoreCase.This function returns a Boolean value indicating whether string left is equal to string right. This
+check is case insensitive. (shami via gates)
+
+PIG-2994: Grunt shortcuts (prasanth_j via cheolsoo)
+
+PIG-3140: Document PigProgressNotificationListener configs (billgraham)
+
+PIG-3139: Document reducer estimation (billgraham)
+
 PIG-2764: Add a biginteger and bigdecimal type to pig (jcoveney)
 
 PIG-3073: POUserFunc creating log spam for large scripts (jcoveney)
@@ -85,6 +98,18 @@ OPTIMIZATIONS
 PIG-3013: BinInterSedes improve chararray sort performance (rohini)
 
 BUG FIXES
+
+PIG-3168: TestMultiQueryBasic.testMultiQueryWithSplitInMapAndMultiMerge fails in trunk (cheolsoo)
+
+PIG-3137: Fix Piggybank test to not using /tmp dir (dreambird via cheolsoo)
+
+PIG-3135: HExecutionEngine should look for resources in user passed Properties (prkommireddi via cheolsoo)
+
+PIG-3145: Parameters in core-site.xml and mapred-site.xml are not correctly substituted (cheolsoo)
+
+PIG-3149: e2e build.xml still refers to jython 2.5.0 jar even though it's replaced by jython standalone 2.5.2 jar (cheolsoo)
+
+PIG-2266: Bug with input file joining optimization in Pig (jadler via cheolsoo)
 
 PIG-2645: PigSplit does not handle the case where SerializationFactory returns null (shami via gates)
 
@@ -445,6 +470,8 @@ PIG-2337: Provide UDF with input schema (xutingz via daijy)
 OPTIMIZATIONS
 
 BUG FIXES
+
+PIG-3147: Spill failing with "java.lang.RuntimeException: InternalCachedBag.spill() should not be called"  (knoguchi via dvryaboy)
 
 PIG-3109: Missing license headers (jarcec via cheolsoo)
 
