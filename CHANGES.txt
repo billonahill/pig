@@ -22,7 +22,35 @@ Trunk (unreleased changes)
 
 INCOMPATIBLE CHANGES
 
+PIG-3191: [piggybank] MultiStorage output filenames are not sortable (Danny Antonelli via jcoveney)
+
+PIG-3174:  Remove rpm and deb artifacts from build.xml (gates)
+
 IMPROVEMENTS
+
+PIG-3202: CUBE operator not documented in user docs (prasanth_j via billgraham)
+
+PIG-3189: Remove ivy/pig.pom and improve build mvn targets (billgraham)
+
+PIG-3192: Better call to action to download Pig in docs (rjurney via jcoveney)
+
+PIG-3167: Job stats are printed incorrectly for map-only jobs (Mark Wagner via jcoveney)
+
+PIG-3169: Remove temporary files that are not needed (Mark Wagner via jcoveney)
+
+PIG-3131: Document PluckTuple UDF (rjurney via jcoveney) 
+
+PIG-3098: Add another test for the self join case (jcoveney)
+
+PIG-3129: Document syntax to refer to previous relation (rjurney via jcoveney)
+
+PIG-2553: Pig shouldn't allow attempts to write multiple relations into same directory (prkommireddi via cheolsoo)
+
+PIG-3179: Task Information Header only prints out the first split for each task (knoguchi via rohini)
+
+PIG-3108: HBaseStorage returns empty maps when mixing wildcard with other columns (christoph.bauer via billgraham)
+
+PIG-3178: Print a stacktrace when ExecutableManager hits an OOM (knoguchi via rohini)
 
 PIG-3160: GFCross uses unnecessary loop (sandyr via cheolsoo)
 
@@ -99,13 +127,23 @@ PIG-3013: BinInterSedes improve chararray sort performance (rohini)
 
 BUG FIXES
 
+PIG-3135: HExecutionEngine should look for resources in user passed Properties (prkommireddi via cheolsoo)
+
+PIG-3200: MiniCluster should delete hadoop-site.xml on shutDown (prkommireddi via cheolsoo)
+
+PIG-3158: Errors in the document "Control Structures" (miyakawataku via cheolsoo)
+
+PIG-3161: Update reserved keywords in Pig docs (russell.jurney via cheolsoo)
+
+PIG-3156: TestSchemaTuple fails in trunk (cheolsoo)
+
+PIG-3155: TestTypeCheckingValidatorNewLP.testSortWithInnerPlan3 fails in trunk (cheolsoo)
+
+PIG-3154: TestPackage.testOperator fails in trunk (dreambird via cheolsoo)
+
 PIG-3168: TestMultiQueryBasic.testMultiQueryWithSplitInMapAndMultiMerge fails in trunk (cheolsoo)
 
 PIG-3137: Fix Piggybank test to not using /tmp dir (dreambird via cheolsoo)
-
-PIG-3135: HExecutionEngine should look for resources in user passed Properties (prkommireddi via cheolsoo)
-
-PIG-3145: Parameters in core-site.xml and mapred-site.xml are not correctly substituted (cheolsoo)
 
 PIG-3149: e2e build.xml still refers to jython 2.5.0 jar even though it's replaced by jython standalone 2.5.2 jar (cheolsoo)
 

@@ -297,11 +297,11 @@ public class GruntParser extends PigScriptParser {
                                   String format, String target, 
                                   List<String> params, List<String> files) 
     throws IOException, ParseException {
-        if (alias == null) {
+        if (alias == null && script == null) {
             alias = mPigServer.getPigContext().getLastAlias();
             // if explain is used immediately after launching grunt shell then
             // last defined alias will be null
-            if (alias == null && script == null) {
+            if (alias == null) {
                 throw new ParseException("'explain' statement must be on an alias or on a script.");
             }
         }
@@ -723,6 +723,7 @@ public class GruntParser extends PigScriptParser {
                 Tuple t = result.next();
                 System.out.println(TupleFormat.format(t));
             }
+            FileLocalizer.deleteTempFiles();
         } else {
             log.warn("'dump' statement is ignored while processing 'explain -script' or '-check'");
         }

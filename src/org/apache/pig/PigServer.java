@@ -76,6 +76,7 @@ import org.apache.pig.impl.streaming.StreamingCommand;
 import org.apache.pig.impl.util.LogUtils;
 import org.apache.pig.impl.util.PropertiesUtil;
 import org.apache.pig.impl.util.UDFContext;
+import org.apache.pig.impl.util.UriUtil;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.newplan.DependencyOrderWalker;
 import org.apache.pig.newplan.Operator;
@@ -124,6 +125,7 @@ public class PigServer {
     protected final Log log = LogFactory.getLog(getClass());
 
     public static final String PRETTY_PRINT_SCHEMA_PROPERTY = "pig.pretty.print.schema";
+    private static final String PIG_LOCATION_CHECK_STRICT = "pig.location.check.strict";
 
     /*
      * The data structure to support grunt shell operations.
@@ -155,9 +157,6 @@ public class PigServer {
     private boolean aggregateWarning = true;
 
     private boolean validateEachStatement = false;
-
-    // PigStats object used in execution of script
-    private PigStats pigStatsForExecute = null;
 
     private String constructScope() {
         // scope servers for now as a session id
@@ -335,18 +334,13 @@ public class PigServer {
      * @throws IOException
      */
     public void parseAndBuild() throws IOException {
-        if( !isMultiQuery ) {
-            // ignore if multiquery is off
-            pigStatsForExecute = PigStats.get();
-        } else {
-            if (currDAG == null || !isBatchOn()) {
-                int errCode = 1083;
-                String msg = "setBatchOn() must be called first.";
-                throw new FrontendException(msg, errCode, PigException.INPUT);
-            }
-            currDAG.parseQuery();
-            currDAG.buildPlan( null );
+        if (currDAG == null || !isBatchOn()) {
+            int errCode = 1083;
+            String msg = "setBatchOn() must be called first.";
+            throw new FrontendException(msg, errCode, PigException.INPUT);
         }
+        currDAG.parseQuery();
+        currDAG.buildPlan( null );
     }
 
     /**
@@ -373,9 +367,15 @@ public class PigServer {
             parseAndBuild();
         }
 
-        pigStatsForExecute = execute();
+        PigStats stats = null;
+        if( !isMultiQuery ) {
+            // ignore if multiquery is off
+            stats = PigStats.get();
+        } else {
+            stats = execute();
+        }
 
-        return getJobs(pigStatsForExecute);
+        return getJobs(stats);
     }
 
     /**
@@ -1609,6 +1609,7 @@ public class PigServer {
                             throw new FrontendException(msg, errCode,
                                     PigException.INPUT, e);
                         }
+                        FileLocalizer.deleteTempFiles();
                         break; // We should have at most one store, so break here.
                     }
                 }
@@ -1698,7 +1699,6 @@ public class PigServer {
         }
 
         private void postProcess() throws IOException {
-
             // The following code deals with store/load combination of
             // intermediate files. In this case we will replace the load
             // operator
@@ -1725,6 +1725,10 @@ public class PigServer {
                 }
             }
 
+            if ("true".equals(pigContext.getProperties().getProperty(PIG_LOCATION_CHECK_STRICT))) {
+                log.info("Output location strick check enabled");
+                checkDuplicateStoreLoc(storeOps);
+            }
 
             for (LOLoad load : loadOps) {
                 for (LOStore store : storeOps) {
@@ -1744,6 +1748,21 @@ public class PigServer {
             }
         }
 
+        /**
+         * This method checks whether the multiple sinks (STORE) use the same
+         * "file-based" location. If yes, throws a RuntimeException
+         * 
+         * @param storeOps
+         */
+        private void checkDuplicateStoreLoc(Set<LOStore> storeOps) {
+            Set<String> uniqueStoreLoc = new HashSet<String>();
+            for(LOStore store : storeOps) {
+                String fileName = store.getFileSpec().getFileName();
+                if(!uniqueStoreLoc.add(fileName) && UriUtil.isHDFSFileOrLocalOrS3N(fileName)) {
+                    throw new RuntimeException("Script contains 2 or more STORE statements writing to same location : "+ fileName);
+                }
+            }
+        }
 
         protected Graph duplicate() {
             // There are two choices on how we duplicate the logical plan
